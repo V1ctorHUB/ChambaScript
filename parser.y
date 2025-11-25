@@ -17,6 +17,8 @@ typedef struct Sym {
     int type;
     int scope_level;
     int addr;
+    int is_array;
+    int length;
     struct Sym* next;
 } Sym;
 
@@ -61,7 +63,7 @@ static Sym* sym_lookup_local(const char* name) {
     return NULL;
 }
 
-static Sym* sym_insert(const char* name, SymKind kind, int type) {
+static Sym* sym_insert(const char* name, SymKind kind, int type, int length) {
     unsigned h = sym_hash(name);
     Sym* e = malloc(sizeof(Sym));
     if (!e) {
@@ -72,15 +74,21 @@ static Sym* sym_insert(const char* name, SymKind kind, int type) {
     e->kind = kind;
     e->type = type;
     e->scope_level = current_scope;
-    e->addr = -1;
+    if (length <= 0) length = 1;
+    e->length = length;
+    e->is_array = (length > 1);
     if (kind == SYM_VAR || kind == SYM_CONST) {
-        if (next_addr >= MAX_VARS) {
+        if (next_addr + e->length > MAX_VARS) {
             fprintf(stderr, "Too many variables\n");
             exit(1);
         }
         e->addr = next_addr;
-        vm_memory[next_addr] = 0.0;
-        next_addr++;
+        for (int i = 0; i < e->length; ++i) {
+            vm_memory[next_addr + i] = 0.0;
+        }
+        next_addr += e->length;
+    } else {
+        e->addr = -1;
     }
     e->next = sym_table[h];
     sym_table[h] = e;
@@ -118,7 +126,9 @@ typedef enum {
     OP_JUMP,
     OP_JUMP_IF_FALSE,
     OP_CALL_BUILTIN,
-    OP_HALT
+    OP_HALT,
+    OP_LOAD_IND,
+    OP_STORE_IND
 } OpCode;
 
 typedef struct {
@@ -198,7 +208,7 @@ void save_bytecode(const char* filename);
 %type <int_val> builtin_func
 %type <int_val> arguments
 %type <int_val> arguments_tail
-%type <int_val> optional_index
+%type <int_val> array_part
 
 %%
 
@@ -233,14 +243,17 @@ declaration:
             if (sym_lookup_local($2)) {
                 semantic_error("variable %s already declared in this scope", $2);
             }
-            sym_insert($2, SYM_VAR, $4);
+            sym_insert($2, SYM_VAR, $4, $5);
         }
     | VAR IDENTIFIER COLON var_type array_part ASSIGN expression
         {
             if (sym_lookup_local($2)) {
                 semantic_error("variable %s already declared in this scope", $2);
             }
-            Sym* s = sym_insert($2, SYM_VAR, $4);
+            if ($5 > 1) {
+                semantic_error("array %s cannot be initialized with scalar expression", $2);
+            }
+            Sym* s = sym_insert($2, SYM_VAR, $4, $5);
             emit(OP_STORE, s->addr, 0.0);
         }
     | CONST IDENTIFIER COLON var_type array_part ASSIGN expression
@@ -248,18 +261,21 @@ declaration:
             if (sym_lookup_local($2)) {
                 semantic_error("constant %s already declared in this scope", $2);
             }
-            Sym* s = sym_insert($2, SYM_CONST, $4);
+            if ($5 > 1) {
+                semantic_error("array constants not supported yet for %s", $2);
+            }
+            Sym* s = sym_insert($2, SYM_CONST, $4, $5);
             emit(OP_STORE, s->addr, 0.0);
         }
     ;
 
 array_part:
-      LBRACKET expression RBRACKET
-    |
+      LBRACKET INTEGER RBRACKET   { $$ = $2; }
+    |                            { $$ = 1; }
     ;
 
 assignment:
-      IDENTIFIER optional_index ASSIGN expression
+      IDENTIFIER ASSIGN expression
         {
             Sym* s = sym_lookup($1);
             if (!s) {
@@ -268,21 +284,26 @@ assignment:
             if (s->kind == SYM_CONST) {
                 semantic_error("assignment to constant %s", $1);
             }
-            if ($2 != 0) {
-                semantic_error("arrays not supported in VM yet");
+            if (s->is_array) {
+                semantic_error("array %s requires an index", $1);
             }
             emit(OP_STORE, s->addr, 0.0);
         }
-    ;
-
-optional_index:
-      LBRACKET expression RBRACKET
+    | IDENTIFIER LBRACKET expression RBRACKET ASSIGN expression
         {
-            $$ = 1;
-        }
-    |
-        {
-            $$ = 0;
+            Sym* s = sym_lookup($1);
+            if (!s) {
+                semantic_error("use of undeclared identifier %s in array assignment", $1);
+            }
+            if (!s->is_array) {
+                semantic_error("identifier %s is not an array", $1);
+            }
+            if (s->kind == SYM_CONST) {
+                semantic_error("assignment to constant array %s", $1);
+            }
+            emit(OP_PUSH_NUM, 0, (double)s->addr);
+            emit(OP_ADD, 0, 0.0);
+            emit(OP_STORE_IND, 0, 0.0);
         }
     ;
 
@@ -392,6 +413,9 @@ factor:
             if (s->addr < 0) {
                 semantic_error("identifier %s is not a variable", $1);
             }
+            if (s->is_array) {
+                semantic_error("array %s requires an index", $1);
+            }
             emit(OP_LOAD, s->addr, 0.0);
         }
     | IDENTIFIER LBRACKET expression RBRACKET
@@ -400,7 +424,12 @@ factor:
             if (!s) {
                 semantic_error("use of undeclared identifier %s in array access", $1);
             }
-            semantic_error("arrays not supported in VM yet");
+            if (!s->is_array) {
+                semantic_error("identifier %s is not an array", $1);
+            }
+            emit(OP_PUSH_NUM, 0, (double)s->addr);
+            emit(OP_ADD, 0, 0.0);
+            emit(OP_LOAD_IND, 0, 0.0);
         }
     | function_call
     | boolean
@@ -803,6 +832,29 @@ void run_vm(void) {
                 break;
             }
             stack[++sp] = res;
+            pc++;
+            break;
+        }
+        case OP_LOAD_IND: {
+            double addr = stack[sp--];
+            int i = (int)addr;
+            if (i < 0 || i >= MAX_VARS) {
+                fprintf(stderr, "Runtime error: invalid indirect load address %d\n", i);
+                exit(1);
+            }
+            stack[++sp] = vm_memory[i];
+            pc++;
+            break;
+        }
+        case OP_STORE_IND: {
+            double value = stack[sp--];
+            double addr = stack[sp--];
+            int i = (int)addr;
+            if (i < 0 || i >= MAX_VARS) {
+                fprintf(stderr, "Runtime error: invalid indirect store address %d\n", i);
+                exit(1);
+            }
+            vm_memory[i] = value;
             pc++;
             break;
         }
