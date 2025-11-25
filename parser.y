@@ -126,6 +126,7 @@ typedef enum {
     OP_JUMP,
     OP_JUMP_IF_FALSE,
     OP_CALL_BUILTIN,
+    OP_POP,
     OP_HALT,
     OP_LOAD_IND,
     OP_STORE_IND
@@ -180,7 +181,7 @@ void save_bytecode(const char* filename);
 %}
 
 %union {
-    int int_val;
+    int   int_val;
     float float_val;
     char* string_val;
 }
@@ -209,6 +210,8 @@ void save_bytecode(const char* filename);
 %type <int_val> arguments
 %type <int_val> arguments_tail
 %type <int_val> array_part
+%type <int_val> while_start
+%type <int_val> while_jmp
 
 %%
 
@@ -229,7 +232,7 @@ statement:
       declaration
     | assignment
     | control_structure
-    | function_call
+    | function_call   { emit(OP_POP, 0, 0.0); }
     | function_declaration
     | return_statement
     | pass_statement
@@ -289,7 +292,7 @@ assignment:
             }
             emit(OP_STORE, s->addr, 0.0);
         }
-    | IDENTIFIER LBRACKET expression RBRACKET ASSIGN expression
+    | IDENTIFIER LBRACKET expression RBRACKET
         {
             Sym* s = sym_lookup($1);
             if (!s) {
@@ -303,6 +306,9 @@ assignment:
             }
             emit(OP_PUSH_NUM, 0, (double)s->addr);
             emit(OP_ADD, 0, 0.0);
+        }
+      ASSIGN expression
+        {
             emit(OP_STORE_IND, 0, 0.0);
         }
     ;
@@ -462,10 +468,26 @@ if_statement:
         }
     ;
 
+while_start:
+    {
+        $$ = code_size;
+    }
+    ;
+
+while_jmp:
+    {
+        int j = emit(OP_JUMP_IF_FALSE, 0, 0.0);
+        $$ = j;
+    }
+    ;
+
 while_loop:
-      WHILE LPAREN boolean_expression RPAREN LBRACE statement_list RBRACE
+      WHILE while_start LPAREN boolean_expression RPAREN while_jmp LBRACE statement_list RBRACE
         {
-            semantic_error("while loop not supported in VM yet");
+            int start = $2;
+            int jmp_false = $6;
+            emit(OP_JUMP, start, 0.0);
+            code[jmp_false].a = code_size;
         }
     ;
 
@@ -832,6 +854,15 @@ void run_vm(void) {
                 break;
             }
             stack[++sp] = res;
+            pc++;
+            break;
+        }
+        case OP_POP: {
+            if (sp < 0) {
+                fprintf(stderr, "Runtime error: POP on empty stack\n");
+                exit(1);
+            }
+            sp--;
             pc++;
             break;
         }

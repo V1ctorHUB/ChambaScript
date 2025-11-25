@@ -6,44 +6,36 @@
 %}
 
 %option noyywrap
-%x COMMENT
 
-DIGIT    [0-9]
-LETTER   [a-zA-Z_]
-ID       {LETTER}({LETTER}|{DIGIT})*
+DIGIT   [0-9]
+LETTER  [A-Za-z_]
+ID      {LETTER}({LETTER}|{DIGIT})*
 
 %%
 
-"/*"                { BEGIN(COMMENT); }
-<COMMENT>"*/"       { BEGIN(INITIAL); }
-<COMMENT>\n         ;
-<COMMENT>.          ;
+"var"        { return VAR; }
+"const"      { return CONST; }
+"func"       { return FUNC; }
+"return"     { return RETURN; }
+"if"         { return IF; }
+"else"       { return ELSE; }
+"while"      { return WHILE; }
+"do"         { return DO; }
+"for"        { return FOR; }
+"break"      { return BREAK; }
+"continue"   { return CONTINUE; }
+"pass"       { return PASS; }
 
-"//"[^\n]*          ;
+"int"        { return TYPE_INT; }
+"tiny"       { return TYPE_TINY; }
+"long"       { return TYPE_LONG; }
+"float"      { return TYPE_FLOAT; }
+"char"       { return TYPE_CHAR; }
+"bool"       { return TYPE_BOOL; }
+"void"       { return TYPE_VOID; }
 
-"var"       { return VAR; }
-"const"     { return CONST; }
-"func"      { return FUNC; }
-"return"    { return RETURN; }
-"if"        { return IF; }
-"else"      { return ELSE; }
-"while"     { return WHILE; }
-"do"        { return DO; }
-"for"       { return FOR; }
-"break"     { return BREAK; }
-"continue"  { return CONTINUE; }
-"pass"      { return PASS; }
-
-"int"       { return TYPE_INT; }
-"tiny"      { return TYPE_TINY; }
-"long"      { return TYPE_LONG; }
-"float"     { return TYPE_FLOAT; }
-"char"      { return TYPE_CHAR; }
-"bool"      { return TYPE_BOOL; }
-"void"      { return TYPE_VOID; }
-
-"true"      { return TRUE; }
-"false"     { return FALSE; }
+"true"       { return TRUE; }
+"false"      { return FALSE; }
 
 "abs"            { return ABS; }
 "min"            { return MIN; }
@@ -88,15 +80,24 @@ ID       {LETTER}({LETTER}|{DIGIT})*
 ":"         { return COLON; }
 ","         { return COMMA; }
 
-{DIGIT}+"."{DIGIT}+   { yylval.float_val = atof(yytext);  return FLOAT_LITERAL; }
-{DIGIT}+              { yylval.int_val   = atoi(yytext);  return INTEGER; }
+{DIGIT}+"."{DIGIT}+   { yylval.float_val = atof(yytext); return FLOAT_LITERAL; }
+{DIGIT}+              { yylval.int_val   = atoi(yytext); return INTEGER; }
 
-{ID}                  { yylval.string_val = strdup(yytext); return IDENTIFIER; }
+{ID}        { yylval.string_val = strdup(yytext); return IDENTIFIER; }
 
-[ \t\r\n]+            ;
+"//"[^\n]*  { }
 
-.                     {
-    printf("Caracter no reconocido: %s\n", yytext);
-}
+"/*"        {
+                int c, prev = 0;
+                while ((c = input()) != 0) {
+                    if (prev == '*' && c == '/')
+                        break;
+                    prev = c;
+                }
+            }
+
+[ \t\r\n]+  { }
+
+.           { fprintf(stderr, "Caracter no reconocido: %s\n", yytext); }
 
 %%
