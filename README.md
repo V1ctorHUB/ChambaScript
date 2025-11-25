@@ -19,16 +19,12 @@ comprobaciones semánticas básicas (variables, arrays, etc.),
 
 generación de bytecode para una máquina virtual de pila.
 
-El bytecode se guarda en un archivo .chamba.bc.
+El bytecode se guarda en un archivo .chamba.bc
 
 La máquina virtual (run_vm) ejecuta ese bytecode y simula:
-
 operaciones aritméticas y lógicas,
-
 variables y arreglos,
-
 estructuras de control (if, while),
-
 funciones builtin del carrito (accelerate, turnLeft, etc.).
 
 El main.c solo orquesta el flujo: abrir archivo, llamar a yyparse, guardar bytecode y ejecutar la VM.
@@ -42,36 +38,29 @@ flex lexer.l
 gcc -Wall -Wextra -o chamba main.c parser.tab.c lex.yy.c -lm
 
 Ejecución de un programa:
-./chamba programa.chamba
+./chamba <programa>.chamba
 
 Si todo va bien:
 
 Imprime “Analisis sintactico y semantico completado exitosamente”.
-
 Genera programa.chamba.bc con el bytecode.
-
 Llama a run_vm() para ejecutar el bytecode y simular el programa.
 
 =========================================================
 3. LEXER.L – ANALIZADOR LEXICO
 
-El lexer está escrito con Flex. Su objetivo es leer texto y producir tokens para Bison.
+El lexer está escrito con Flex. 
+Su objetivo es leer texto y producir tokens para Bison.
 
 Definiciones de patrones:
-
-DIGIT: un dígito [0-9].
-
-LETTER: una letra o underscore [A-Za-z_].
-
-ID: un identificador, que empieza con LETTER y puede tener LETTER o DIGIT.
+-DIGIT: un dígito [0-9].
+-LETTER: una letra o underscore [A-Za-z_].
+-ID: un identificador, que empieza con LETTER y puede tener LETTER o DIGIT.
 
 Palabras reservadas:
-
-var, const, func, return, if, else, while, do, for, break, continue, pass
-
-tipos: int, tiny, long, float, char, bool, void
-
-booleanos: true, false
+-var, const, func, return, if, else, while, do, for, break, continue, pass
+-tipos: int, tiny, long, float, char, bool, void
+-booleanos: true, false
 
 funciones builtin del lenguaje:
 abs, min, max, sqrt, pow,
@@ -79,209 +68,138 @@ checkLineLeft, checkLineRight,
 accelerate, setForward, setBackward, brake,
 turnLeft, turnRight, turnAngle
 
-Cada una se mapea a un token específico (VAR, CONST, IF, WHILE, ABS, MIN, ACCELERATE, etc.) que está declarado en parser.y.
+Cada una se mapea a un token específico (VAR, CONST, IF, WHILE, ABS, MIN, ACCELERATE, etc.) que está declarado en parser.y
 
 Operadores y símbolos:
-
-Comparación: ==, !=, <=, >=, <, >
-
-Lógicos: &&, ||, !
-
-Aritméticos: +, -, *, /, %
-
-Asignación y puntuación: =, (, ), {, }, [, ], ;, :, ,
+-Comparación: ==, !=, <=, >=, <, >
+-Lógicos: &&, ||, !
+-Aritméticos: +, -, *, /, %
+-Asignación y puntuación: =, (, ), {, }, [, ], ;, :, ,
 
 Literales numéricos:
-
-Flotantes: {DIGIT}+"."{DIGIT}+
+-Flotantes: {DIGIT}+"."{DIGIT}+
 Se convierten a double con atof y se guardan en yylval.float_val. Token: FLOAT_LITERAL.
 
-Enteros: {DIGIT}+
+-Enteros: {DIGIT}+
 Se convierten a int con atoi y se guardan en yylval.int_val. Token: INTEGER.
 
 Identificadores:
-
 {ID}
 Se copian con strdup(yytext) a yylval.string_val y se devuelven como token IDENTIFIER.
 
 Comentarios:
-
-Comentarios de línea: "//" seguido de cualquier cosa hasta el salto de línea. Se ignoran.
-
-Comentarios multilínea: "/* ... /"
+-Comentarios de línea: "//" seguido de cualquier cosa hasta el salto de línea. Se ignoran.
+-Comentarios multilínea: "/* ... /"
 Se consume carácter por carácter usando input() hasta detectar la secuencia "/". También se ignoran.
 
 Espacios en blanco:
-
 [ \t\r\n]+
 Se ignoran.
 
 Cualquier otro carácter:
-
 Se imprime un mensaje de error “Caracter no reconocido: X”.
 
 El lexer no conoce nada de la semántica; solo clasifica texto en tokens y rellena yylval cuando hace falta (identificadores y literales).
 
 =========================================================
 4. PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE
-
 4.1. Zona de código C inicial
 
 Incluye:
-
 stdio.h, stdlib.h, string.h, stdarg.h, math.h
 
 Declaraciones de yylex, yyerror, yyin.
-
 Definición de tipos para la tabla de símbolos:
-
 SymKind: SYM_VAR, SYM_CONST, SYM_FUNC.
 
 struct Sym:
-
-name: nombre de la variable/constante/función.
-
-kind: tipo de símbolo (variable, constante, función).
-
-type: tipo declarado (TOKEN del tipo: TYPE_INT, TYPE_FLOAT, etc.).
-
-scope_level: nivel de ámbito (actualmente se usa un solo nivel).
-
-addr: dirección base en la memoria de la VM.
-
-is_array: 1 si es arreglo, 0 si es escalar.
-
-length: número de elementos (1 para escalar).
-
-next: siguiente símbolo en la cadena para el mismo hash.
+-name: nombre de la variable/constante/función.
+-kind: tipo de símbolo (variable, constante, función).
+-type: tipo declarado (TOKEN del tipo: TYPE_INT, TYPE_FLOAT, etc.).
+-scope_level: nivel de ámbito (actualmente se usa un solo nivel).
+-addr: dirección base en la memoria de la VM.
+-is_array: 1 si es arreglo, 0 si es escalar.
+-length: número de elementos (1 para escalar).
+-next: siguiente símbolo en la cadena para el mismo hash.
 
 Tabla de símbolos:
-
-sym_table: arreglo de punteros a Sym con tamaño fijo SYM_TABLE_SIZE.
-
-current_scope: entero para el nivel de scope (en esta fase se mantiene en 0).
-
-next_addr: siguiente índice libre en vm_memory.
-
-vm_memory: arreglo double de tamaño MAX_VARS que modela la memoria de la VM.
+-sym_table: arreglo de punteros a Sym con tamaño fijo SYM_TABLE_SIZE.
+-current_scope: entero para el nivel de scope (en esta fase se mantiene en 0).
+-next_addr: siguiente índice libre en vm_memory.
+-vm_memory: arreglo double de tamaño MAX_VARS que modela la memoria de la VM.
 
 Funciones de la tabla de símbolos:
-
-sym_hash(nombre): usa un hash tipo djb2 para mapear strings a índices en la tabla.
-
-sym_lookup(nombre): busca cualquier símbolo con ese nombre en toda la tabla.
-
-sym_lookup_local(nombre): busca solo en el scope actual (current_scope).
-
-sym_insert(nombre, kind, type, length):
+-sym_hash(nombre): usa un hash tipo djb2 para mapear strings a índices en la tabla.
+-sym_lookup(nombre): busca cualquier símbolo con ese nombre en toda la tabla.
+-sym_lookup_local(nombre): busca solo en el scope actual (current_scope).
+-sym_insert(nombre, kind, type, length):
 
 Crea un nuevo Sym.
-
 Ajusta length (1 si se pasa <= 0).
-
 Marca is_array si length > 1.
 
 Si es variable o constante:
-
 Asigna un bloque de length posiciones en vm_memory a partir de next_addr.
-
 Inicializa esas posiciones a 0.0.
-
 Incrementa next_addr en length.
-
 Inserta el símbolo en la lista enlazada correspondiente al hash.
 
 Errores semánticos:
-
 semantic_error(fmt, ...): imprime “Semantic error: ...” y termina el programa.
 
 4.2. Definición de bytecode y generación de instrucciones
-
 Se define:
-
 OpCode: enum con todas las instrucciones:
-
-OP_PUSH_NUM (empuja número a la pila)
-
-OP_LOAD (carga vm_memory[addr])
-
-OP_STORE (guarda en vm_memory[addr])
-
-OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD
-
-OP_LT, OP_LTE, OP_GT, OP_GTE, OP_EQ, OP_NEQ
-
-OP_AND, OP_OR, OP_NOT
-
-OP_JUMP, OP_JUMP_IF_FALSE
-
-OP_CALL_BUILTIN
-
-OP_POP
-
-OP_HALT
-
-OP_LOAD_IND (acceso indirecto para arreglos)
-
-OP_STORE_IND (escritura indirecta para arreglos)
+-OP_PUSH_NUM (empuja número a la pila)
+-OP_LOAD (carga vm_memory[addr])
+-OP_STORE (guarda en vm_memory[addr])
+-OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD
+-OP_LT, OP_LTE, OP_GT, OP_GTE, OP_EQ, OP_NEQ
+-OP_AND, OP_OR, OP_NOT
+-OP_JUMP, OP_JUMP_IF_FALSE
+-OP_CALL_BUILTIN
+-OP_POP
+-OP_HALT
+-OP_LOAD_IND (acceso indirecto para arreglos)
+-OP_STORE_IND (escritura indirecta para arreglos)
 
 struct Instr:
-
-op: opcode
-
-a: entero auxiliar
-
-d: double auxiliar
-
-code[MAX_CODE]: arreglo de instrucciones.
-
-code_size: número de instrucciones generadas.
+-op: opcode
+-a: entero auxiliar
+-d: double auxiliar
+-code[MAX_CODE]: arreglo de instrucciones.
+-code_size: número de instrucciones generadas.
 
 Función emit(op, a, d):
-
-Inserta una instrucción en code[code_size].
-
-Devuelve el índice donde se insertó (útil para backpatch de saltos).
-
-Comprueba que no se exceda MAX_CODE.
+-Inserta una instrucción en code[code_size].
+-Devuelve el índice donde se insertó (útil para backpatch de saltos).
+-Comprueba que no se exceda MAX_CODE.
 
 Función to_bool(v):
-
 Convierte un double a 0.0 o 1.0 según sea falso o verdadero.
 
 Identificadores de builtins (BuiltinId):
-
-BI_ABS, BI_MIN, BI_MAX, BI_SQRT, BI_POW
-
-BI_CHECKLINELEFT, BI_CHECKLINERIGHT
-
-BI_ACCELERATE, BI_SETFORWARD, BI_SETBACKWARD
-
-BI_BRAKE, BI_TURNLEFT, BI_TURNRIGHT, BI_TURNANGLE
+-BI_ABS, BI_MIN, BI_MAX, BI_SQRT, BI_POW
+-BI_CHECKLINELEFT, BI_CHECKLINERIGHT
+-BI_ACCELERATE, BI_SETFORWARD, BI_SETBACKWARD
+-BI_BRAKE, BI_TURNLEFT, BI_TURNRIGHT, BI_TURNANGLE
 
 4.3. %union y tokens
 
 %union define:
 
-int_val (para enteros, tipos, índices de salto, etc.)
-
-float_val (para literales flotantes)
-
-string_val (para nombres de identificador)
+-int_val (para enteros, tipos, índices de salto, etc.)
+-float_val (para literales flotantes)
+-string_val (para nombres de identificador)
 
 Se declaran tokens con su tipo de atributo:
-
-IDENTIFIER usa string_val.
-
-INTEGER usa int_val.
-
-FLOAT_LITERAL usa float_val.
+-IDENTIFIER usa string_val.
+-INTEGER usa int_val.
+-FLOAT_LITERAL usa float_val.
 
 Se declaran tokens para:
-
-Palabras clave, tipos, operadores, funciones builtin.
-
-No terminales con tipo int_val: var_type, builtin_func, arguments, arguments_tail, array_part, while_start, while_jmp.
+-Palabras clave, tipos, operadores, funciones builtin.
+-No terminales con tipo int_val: var_type, builtin_func, arguments, arguments_tail, array_part, while_start, while_jmp.
 
 4.4. Regla program
 
@@ -296,106 +214,54 @@ Genera un OP_HALT al final, que hace que la VM termine la ejecución.
 
 4.5. Lista de sentencias
 
-statement_list:
-
-cadena de statement ; statement ; ...
-
-o vacío.
-
-statement:
-
-declaration
-
-assignment
-
-control_structure
-
-function_call (se añade OP_POP, porque la VM deja el valor de retorno en la pila y no lo queremos acumular)
-
-function_declaration (todavía no soportada para ejecución)
-
-return_statement (solo placeholder)
-
-pass, break, continue (placeholders; aún no gestionados en la VM).
+– statement_list define una secuencia de statements separados por punto y coma, permitiendo también listas vacías.
+– statement agrupa todos los tipos de sentencia del lenguaje.
+– Las llamadas a funciones builtin usadas como statement descartan su valor de retorno con OP_POP, para no llenar la pila.
+– Cada statement genera bytecode en el orden en que aparece, y ese orden define la ejecución real de la máquina virtual.
+– Esta parte del parser conecta la sintaxis de alto nivel del programa con la secuencia lineal de instrucciones que interpreta la VM.
 
 4.6. Declaración de variables y constantes
 
 declaration maneja tres casos:
-
-var IDENT : tipo [size]
-
+-var IDENT : tipo [size]
 Comprueba que no esté ya declarada en el mismo scope.
-
-sym_insert como SYM_VAR con ese tipo y tamaño.
-
+-sym_insert como SYM_VAR con ese tipo y tamaño.
 No genera bytecode extra: la reserva de memoria ya se hizo al insertar.
-
-var IDENT : tipo [size] = expresión
-
+-var IDENT : tipo [size] = expresión
 Igual, pero exige que size sea 1 (solo escalar).
-
-sym_insert.
-
+-sym_insert.
 La expresión deja el valor en la pila.
-
-OP_STORE en s->addr para guardar el valor inicial.
-
-const IDENT : tipo [size] = expresión
-
+-OP_STORE en s->addr para guardar el valor inicial.
+-const IDENT : tipo [size] = expresión
 Similar a var, pero kind = SYM_CONST.
-
-No permite arrays constantes.
-
-Guarda el valor inicial con OP_STORE.
+-No permite arrays constantes.
+-Guarda el valor inicial con OP_STORE.
 
 array_part:
-
 [INTEGER] da length = ese entero.
-
 vacío da length = 1 (no es arreglo).
 
 4.7. Asignaciones
-
 assignment cubre:
-
 IDENT = expresión
-
 Busca el símbolo.
-
 Comprueba:
-
 que exista,
-
 que no sea const,
-
 que no sea array (por qué entonces falta índice).
-
 Emite OP_STORE en la dirección base.
-
 IDENT [ expresión ] = expresión
-
 Primero se procesa IDENT [ expresión ]:
-
 Busca símbolo.
-
 Comprueba que exista, que sea array y que no sea const.
-
 Emite:
-
 expresión deja el índice en la pila.
-
 OP_PUSH_NUM con la dirección base del array.
-
 OP_ADD para sumar base + indice → dirección efectiva.
-
 Luego se procesa la parte de ASSIGN expression:
-
 expresión deja el valor en la pila.
-
 OP_STORE_IND:
-
 Saca valor y dirección de la pila.
-
 Guarda vm_memory[addr] = valor.
 
 4.8. Tipos
