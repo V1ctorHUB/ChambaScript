@@ -32,6 +32,29 @@ El main.c solo orquesta el flujo: abrir archivo, llamar a yyparse, guardar bytec
 =========================================================
 2. FLUJO COMPLETO DE COMPILACION Y EJECUCION
 
+instalacion de los recursos necesarios: 
+
+-macOS:
+Instalar Homebrew: 
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+
+Instalar Bison y Flex:
+brew install bison flex
+
+verificaciones:
+brew info bison
+brew info flex
+
+-Linux (Debian / Ubuntu y derivados):
+sudo apt update
+sudo apt install flex bison
+
+-Linux (Fedora / RHEL / CentOS):
+sudo dnf install flex bison
+
+-Linux (Arch / Manjaro):
+sudo pacman -S flex bison
+
 Compilación de las herramientas:
 bison -d parser.y
 flex lexer.l
