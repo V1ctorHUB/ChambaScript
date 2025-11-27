@@ -1,14 +1,14 @@
 ChambaScript
 
 ## INDICE 
-- [1. VISION GENERAL](#1._vision_general)
-- [2. FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC](#2._flujo_completo_de_compilacion_y_ejecucion_en_pc)
-- [3. LEXER.L – ANALIZADOR LEXICO](#3._lexer.l_–_analizador_lexico)
-- [4. PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE](#4._parser.y_–_analisis_sintactico,_tabla_de_simbolos_y_generacion_de_bytecode)
-- [5. MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)](#5._maquina_virtual_en_pc_-_run__vm_(vm.c))
-- [6. SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC](#6._save__bytecode_-_formato_del_archivo_.chamba.bc)
-- [7. MAIN.C – PUNTO DE ENTRADA EN PC](#7._main.c_-_punto_de_entrada_en_pc)
-- [8. MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)](#8._maquina_virtual_en_arduino_-_chamba_car_(runtime_en_hardware))
+- [1. VISION GENERAL](#1.-vision-general)
+- [2. FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC](#2.-flujo-completo-de-compilacion-y-ejecucion-en-pc)
+- [3. LEXER.L – ANALIZADOR LEXICO](#3.-lexer.l-–-analizador-lexico)
+- [4. PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE](#4.-parser.y-–-analisis-sintactico,-tabla-de-simbolos-y-generacion-de-bytecode)
+- [5. MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)](#5.-maquina-virtual-en-pc---run_vm-(vm.c))
+- [6. SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC](#6.-save_bytecode---formato-del-archivo-.chamba.bc)
+- [7. MAIN.C – PUNTO DE ENTRADA EN PC](#7.-main.c---punto-de-entrada-en-pc)
+- [8. MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)](#8.-maquina-virtual-en-arduino---chamba-car-(runtime-en-hardware))
 
 
 ## 1. VISION GENERAL
