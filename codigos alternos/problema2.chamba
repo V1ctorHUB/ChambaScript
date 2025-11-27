@@ -1,0 +1,45 @@
+var lineCount : int = 0;
+var left      : int = 0;
+var right     : int = 0;
+
+var baseSpeed     : int = 180;
+var crossSpeed    : int = 230;
+var backSpeed     : int = 150;
+var backSteps     : int = 0;
+var backStepsMax  : int = 60;
+
+
+setForward(baseSpeed);
+
+
+while (lineCount < 3) {
+    
+    left  = checkLineLeft();
+    right = checkLineRight();
+
+    
+    if (left == 1 && right == 1) {
+        lineCount = lineCount + 1;
+
+        
+        accelerate(crossSpeed);
+    } else {
+        pass;
+    };
+};
+
+
+brake();
+
+
+setBackward(backSpeed);
+backSteps = 0;
+
+while (backSteps < backStepsMax) {
+    
+    accelerate(backSpeed);
+    backSteps = backSteps + 1;
+};
+
+
+brake();

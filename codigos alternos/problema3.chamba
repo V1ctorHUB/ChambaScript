@@ -1,0 +1,38 @@
+var speed    : int = 200;
+var steps    : int = 0;
+var stepsMax : int = 100;
+
+setForward(speed);
+
+steps = 0;
+while (steps < stepsMax) {
+    accelerate(speed);
+    steps = steps + 1;
+};
+
+turnRight(90);
+
+steps = 0;
+while (steps < stepsMax) {
+    accelerate(speed);
+    steps = steps + 1;
+};
+
+turnRight(90);
+turnRight(90);
+
+steps = 0;
+while (steps < stepsMax) {
+    accelerate(speed);
+    steps = steps + 1;
+};
+
+turnLeft(90);
+
+steps = 0;
+while (steps < stepsMax) {
+    accelerate(speed);
+    steps = steps + 1;
+};
+
+brake();
