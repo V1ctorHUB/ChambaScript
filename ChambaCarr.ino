@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <SD.h>
+#include <math.h>
 
 const int IN1 = 13;
 const int IN2 = 12;
@@ -13,8 +14,8 @@ const int sensorDerPin = 9;
 const bool LINEA_ALTA = true;
 const int SD_CS_PIN = 4;
 
-#define MAX_CODE 512
-#define MAX_VARS 128
+#define MAX_CODE 64
+#define MAX_VARS 32
 
 typedef enum {
   OP_PUSH_NUM,
@@ -65,20 +66,20 @@ typedef enum {
 typedef struct {
   OpCode op;
   int a;
-  double d;
+  float d;
 } Instr;
 
 Instr code[MAX_CODE];
 int code_size = 0;
-double vm_memory[MAX_VARS];
+float vm_memory[MAX_VARS];
 int entry_pc = 0;
 
 bool programLoaded = false;
 bool executed = false;
 
-static double to_bool(double v) {
-  if (v != 0.0) return 1.0;
-  return 0.0;
+static float to_bool(float v) {
+  if (v != 0.0f) return 1.0f;
+  return 0.0f;
 }
 
 int clampPWM(int v) {
@@ -118,10 +119,10 @@ void setPWM(int pwmIzq, int pwmDer) {
 }
 
 void run_vm() {
-  double stack[128];
+  float stack[32];
   int sp = -1;
   int pc = entry_pc;
-  int call_stack[64];
+  int call_stack[16];
   int call_sp = 0;
 
   for (;;) {
@@ -143,99 +144,99 @@ void run_vm() {
       pc++;
       break;
     case OP_ADD: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = a + b;
       pc++;
       break;
     }
     case OP_SUB: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = a - b;
       pc++;
       break;
     }
     case OP_MUL: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = a * b;
       pc++;
       break;
     }
     case OP_DIV: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = a / b;
       pc++;
       break;
     }
     case OP_MOD: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = fmod(a, b);
       pc++;
       break;
     }
     case OP_LT: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(a < b);
       pc++;
       break;
     }
     case OP_LTE: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(a <= b);
       pc++;
       break;
     }
     case OP_GT: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(a > b);
       pc++;
       break;
     }
     case OP_GTE: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(a >= b);
       pc++;
       break;
     }
     case OP_EQ: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(a == b);
       pc++;
       break;
     }
     case OP_NEQ: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(a != b);
       pc++;
       break;
     }
     case OP_AND: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(to_bool(a) && to_bool(b));
       pc++;
       break;
     }
     case OP_OR: {
-      double b = stack[sp--];
-      double a = stack[sp--];
+      float b = stack[sp--];
+      float a = stack[sp--];
       stack[++sp] = to_bool(to_bool(a) || to_bool(b));
       pc++;
       break;
     }
     case OP_NOT: {
-      double a = stack[sp--];
-      stack[++sp] = to_bool(a) ? 0.0 : 1.0;
+      float a = stack[sp--];
+      stack[++sp] = to_bool(a) ? 0.0f : 1.0f;
       pc++;
       break;
     }
@@ -243,8 +244,8 @@ void run_vm() {
       pc = in.a;
       break;
     case OP_JUMP_IF_FALSE: {
-      double cond = stack[sp--];
-      if (to_bool(cond) == 0.0) {
+      float cond = stack[sp--];
+      if (to_bool(cond) == 0.0f) {
         pc = in.a;
       } else {
         pc++;
@@ -254,12 +255,12 @@ void run_vm() {
     case OP_CALL_BUILTIN: {
       int id = in.a;
       int argc = (int)in.d;
-      double args[8];
+      float args[4]; // programas pequeños, pocos args
       int i;
       for (i = argc - 1; i >= 0; --i) {
         args[i] = stack[sp--];
       }
-      double res = 0.0;
+      float res = 0.0f;
       switch (id) {
       case BI_ABS:
         if (argc >= 1) res = fabs(args[0]);
@@ -278,12 +279,12 @@ void run_vm() {
         break;
       case BI_CHECKLINELEFT: {
         bool v = hayLinea(sensorIzqPin);
-        res = v ? 1.0 : 0.0;
+        res = v ? 1.0f : 0.0f;
         break;
       }
       case BI_CHECKLINERIGHT: {
         bool v = hayLinea(sensorDerPin);
-        res = v ? 1.0 : 0.0;
+        res = v ? 1.0f : 0.0f;
         break;
       }
       case BI_ACCELERATE:
@@ -291,7 +292,7 @@ void run_vm() {
           int s = clampPWM((int)args[0]);
           setPWM(s, s);
         }
-        res = 0.0;
+        res = 0.0f;
         break;
       case BI_SETFORWARD:
         if (argc >= 1) {
@@ -299,7 +300,7 @@ void run_vm() {
           adelante();
           setPWM(s, s);
         }
-        res = 0.0;
+        res = 0.0f;
         break;
       case BI_SETBACKWARD:
         if (argc >= 1) {
@@ -307,25 +308,25 @@ void run_vm() {
           atras();
           setPWM(s, s);
         }
-        res = 0.0;
+        res = 0.0f;
         break;
       case BI_BRAKE:
         setPWM(0, 0);
-        res = 0.0;
+        res = 0.0f;
         break;
       case BI_TURNLEFT:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
           setPWM(0, s);
         }
-        res = 0.0;
+        res = 0.0f;
         break;
       case BI_TURNRIGHT:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
           setPWM(s, 0);
         }
-        res = 0.0;
+        res = 0.0f;
         break;
       case BI_TURNANGLE:
         if (argc >= 1) {
@@ -336,10 +337,10 @@ void run_vm() {
             setPWM(s, 0);
           }
         }
-        res = 0.0;
+        res = 0.0f;
         break;
       default:
-        res = 0.0;
+        res = 0.0f;
         break;
       }
       stack[++sp] = res;
@@ -354,7 +355,7 @@ void run_vm() {
       pc++;
       break;
     case OP_LOAD_IND: {
-      double addr = stack[sp--];
+      float addr = stack[sp--];
       int i = (int)addr;
       if (i < 0 || i >= MAX_VARS) {
         return;
@@ -364,8 +365,8 @@ void run_vm() {
       break;
     }
     case OP_STORE_IND: {
-      double value = stack[sp--];
-      double addr = stack[sp--];
+      float value = stack[sp--];
+      float addr = stack[sp--];
       int i = (int)addr;
       if (i < 0 || i >= MAX_VARS) {
         return;
@@ -375,7 +376,7 @@ void run_vm() {
       break;
     }
     case OP_CALL:
-      if (call_sp >= 64) {
+      if (call_sp >= 16) {
         return;
       }
       call_stack[call_sp++] = pc + 1;
@@ -416,9 +417,9 @@ bool loadBytecode(const char* filename) {
       return false;
     }
     int op, a;
-    double d;
+    float d;
     const char* cstr = l.c_str();
-    if (sscanf(cstr, "%d %d %lf", &op, &a, &d) != 3) {
+    if (sscanf(cstr, "%d %d %f", &op, &a, &d) != 3) {
       f.close();
       return false;
     }
@@ -442,6 +443,7 @@ void setup() {
   pinMode(sensorDerPin, INPUT);
   Serial.begin(9600);
   SD.begin(SD_CS_PIN);
+
   if (loadBytecode("programa.chamba.bc")) {
     programLoaded = true;
   } else {
