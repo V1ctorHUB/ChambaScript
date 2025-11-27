@@ -4,7 +4,7 @@ ChambaScript
 - [VISION GENERAL](#vision-general)
 - [FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC](#flujo-completo-de-compilacion-y-ejecucion-en-pc)
 - [LEXER.L – ANALIZADOR LEXICO](#lexerl-–-analizador-lexico)
-- [PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE](#parsery-–-analisis-sintactico,-tabla-de-simbolos-y-generacion-de-bytecode)
+- [PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE](#parsery-–-analisis-sintactico-tabla-de-simbolos-y-generacion-de-bytecode)
 - [MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)](#maquina-virtual-en-pc---run_vm-(vmc))
 - [SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC](#save_bytecode---formato-del-archivo-chambabc)
 - [MAIN.C – PUNTO DE ENTRADA EN PC](#mainc---punto-de-entrada-en-pc)
