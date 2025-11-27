@@ -13,7 +13,7 @@ var lastTurn : int  = 1;
 var die      : bool = false;
 var steps    : int  = 0;
 
-while (steps < 10) {
+while (true) {
     var negroIzq : bool = checkLineLeft();
     var negroDer : bool = checkLineRight();
 
