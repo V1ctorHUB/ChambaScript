@@ -58,7 +58,8 @@ sudo pacman -S flex bison
 Compilación de las herramientas:
 bison -d parser.y
 flex lexer.l
-gcc -Wall -Wextra -o chamba main.c parser.tab.c lex.yy.c -lm
+gcc -Wall -Wextra -o chamba main.c parser.tab.c lex.yy.c vm.c -lm
+
 
 Ejecución de un programa:
 ./chamba <programa>.chamba
