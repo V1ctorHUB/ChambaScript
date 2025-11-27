@@ -204,7 +204,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
-#include <math.h>
+#include "vm.h"
 
 int yylex(void);
 void yyerror(const char* s);
@@ -224,12 +224,10 @@ typedef struct Sym {
 } Sym;
 
 #define SYM_TABLE_SIZE 997
-#define MAX_VARS 1024
 
 static Sym* sym_table[SYM_TABLE_SIZE];
 static int current_scope = 0;
 static int next_addr = 0;
-static double vm_memory[MAX_VARS];
 
 static unsigned sym_hash(const char* s) {
     unsigned h = 5381u;
@@ -306,80 +304,6 @@ static void semantic_error(const char* fmt, ...) {
     exit(1);
 }
 
-typedef enum {
-    OP_PUSH_NUM,
-    OP_LOAD,
-    OP_STORE,
-    OP_ADD,
-    OP_SUB,
-    OP_MUL,
-    OP_DIV,
-    OP_MOD,
-    OP_LT,
-    OP_LTE,
-    OP_GT,
-    OP_GTE,
-    OP_EQ,
-    OP_NEQ,
-    OP_AND,
-    OP_OR,
-    OP_NOT,
-    OP_JUMP,
-    OP_JUMP_IF_FALSE,
-    OP_CALL_BUILTIN,
-    OP_POP,
-    OP_HALT,
-    OP_LOAD_IND,
-    OP_STORE_IND
-} OpCode;
-
-typedef struct {
-    OpCode op;
-    int a;
-    double d;
-} Instr;
-
-#define MAX_CODE 4096
-
-static Instr code[MAX_CODE];
-static int code_size = 0;
-
-static int emit(OpCode op, int a, double d) {
-    if (code_size >= MAX_CODE) {
-        fprintf(stderr, "Code overflow\n");
-        exit(1);
-    }
-    code[code_size].op = op;
-    code[code_size].a = a;
-    code[code_size].d = d;
-    return code_size++;
-}
-
-static double to_bool(double v) {
-    if (v != 0.0) return 1.0;
-    return 0.0;
-}
-
-typedef enum {
-    BI_ABS,
-    BI_MIN,
-    BI_MAX,
-    BI_SQRT,
-    BI_POW,
-    BI_CHECKLINELEFT,
-    BI_CHECKLINERIGHT,
-    BI_ACCELERATE,
-    BI_SETFORWARD,
-    BI_SETBACKWARD,
-    BI_BRAKE,
-    BI_TURNLEFT,
-    BI_TURNRIGHT,
-    BI_TURNANGLE
-} BuiltinId;
-
-void run_vm(void);
-void save_bytecode(const char* filename);
-
 
 /* Enabling traces.  */
 #ifndef YYDEBUG
@@ -401,14 +325,14 @@ void save_bytecode(const char* filename);
 
 #if ! defined YYSTYPE && ! defined YYSTYPE_IS_DECLARED
 typedef union YYSTYPE
-#line 183 "parser.y"
+#line 107 "parser.y"
 {
     int   int_val;
     float float_val;
     char* string_val;
 }
 /* Line 193 of yacc.c.  */
-#line 412 "parser.tab.c"
+#line 336 "parser.tab.c"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
@@ -421,7 +345,7 @@ typedef union YYSTYPE
 
 
 /* Line 216 of yacc.c.  */
-#line 425 "parser.tab.c"
+#line 349 "parser.tab.c"
 
 #ifdef short
 # undef short
@@ -750,17 +674,17 @@ static const yytype_int8 yyrhs[] =
 /* YYRLINE[YYN] -- source line where rule number YYN was defined.  */
 static const yytype_uint16 yyrline[] =
 {
-       0,   219,   219,   226,   227,   228,   232,   233,   234,   235,
-     236,   237,   238,   239,   240,   244,   251,   262,   276,   277,
-     281,   296,   295,   317,   318,   319,   320,   321,   322,   323,
-     327,   331,   332,   339,   340,   347,   348,   352,   359,   360,
-     364,   368,   372,   379,   380,   384,   391,   392,   396,   400,
-     407,   411,   412,   413,   427,   440,   441,   445,   446,   447,
-     448,   453,   458,   452,   472,   478,   485,   495,   502,   509,
-     513,   520,   521,   525,   526,   530,   534,   538,   539,   540,
-     541,   542,   543,   544,   545,   546,   547,   548,   549,   550,
-     551,   555,   559,   570,   575,   581,   586,   592,   593,   597,
-     601,   608,   612,   619,   623,   630,   634,   638
+       0,   143,   143,   150,   151,   152,   156,   157,   158,   159,
+     160,   161,   162,   163,   164,   168,   175,   186,   200,   201,
+     205,   220,   219,   241,   242,   243,   244,   245,   246,   247,
+     251,   255,   256,   263,   264,   271,   272,   276,   283,   284,
+     288,   292,   296,   303,   304,   308,   315,   316,   320,   324,
+     331,   335,   336,   337,   351,   364,   365,   369,   370,   371,
+     372,   377,   382,   376,   396,   402,   409,   419,   426,   433,
+     437,   444,   445,   449,   450,   454,   458,   462,   463,   464,
+     465,   466,   467,   468,   469,   470,   471,   472,   473,   474,
+     475,   479,   483,   494,   499,   505,   510,   516,   517,   521,
+     525,   532,   536,   543,   547,   554,   558,   562
 };
 #endif
 
@@ -1809,19 +1733,19 @@ yyreduce:
   switch (yyn)
     {
         case 2:
-#line 220 "parser.y"
+#line 144 "parser.y"
     {
         emit(OP_HALT, 0, 0.0);
     ;}
     break;
 
   case 9:
-#line 235 "parser.y"
+#line 159 "parser.y"
     { emit(OP_POP, 0, 0.0); ;}
     break;
 
   case 15:
-#line 245 "parser.y"
+#line 169 "parser.y"
     {
             if (sym_lookup_local((yyvsp[(2) - (5)].string_val))) {
                 semantic_error("variable %s already declared in this scope", (yyvsp[(2) - (5)].string_val));
@@ -1831,7 +1755,7 @@ yyreduce:
     break;
 
   case 16:
-#line 252 "parser.y"
+#line 176 "parser.y"
     {
             if (sym_lookup_local((yyvsp[(2) - (7)].string_val))) {
                 semantic_error("variable %s already declared in this scope", (yyvsp[(2) - (7)].string_val));
@@ -1845,7 +1769,7 @@ yyreduce:
     break;
 
   case 17:
-#line 263 "parser.y"
+#line 187 "parser.y"
     {
             if (sym_lookup_local((yyvsp[(2) - (7)].string_val))) {
                 semantic_error("constant %s already declared in this scope", (yyvsp[(2) - (7)].string_val));
@@ -1859,17 +1783,17 @@ yyreduce:
     break;
 
   case 18:
-#line 276 "parser.y"
+#line 200 "parser.y"
     { (yyval.int_val) = (yyvsp[(2) - (3)].int_val); ;}
     break;
 
   case 19:
-#line 277 "parser.y"
+#line 201 "parser.y"
     { (yyval.int_val) = 1; ;}
     break;
 
   case 20:
-#line 282 "parser.y"
+#line 206 "parser.y"
     {
             Sym* s = sym_lookup((yyvsp[(1) - (3)].string_val));
             if (!s) {
@@ -1886,7 +1810,7 @@ yyreduce:
     break;
 
   case 21:
-#line 296 "parser.y"
+#line 220 "parser.y"
     {
             Sym* s = sym_lookup((yyvsp[(1) - (4)].string_val));
             if (!s) {
@@ -1904,147 +1828,147 @@ yyreduce:
     break;
 
   case 22:
-#line 311 "parser.y"
+#line 235 "parser.y"
     {
             emit(OP_STORE_IND, 0, 0.0);
         ;}
     break;
 
   case 23:
-#line 317 "parser.y"
+#line 241 "parser.y"
     { (yyval.int_val) = TYPE_INT; ;}
     break;
 
   case 24:
-#line 318 "parser.y"
+#line 242 "parser.y"
     { (yyval.int_val) = TYPE_TINY; ;}
     break;
 
   case 25:
-#line 319 "parser.y"
+#line 243 "parser.y"
     { (yyval.int_val) = TYPE_LONG; ;}
     break;
 
   case 26:
-#line 320 "parser.y"
+#line 244 "parser.y"
     { (yyval.int_val) = TYPE_FLOAT; ;}
     break;
 
   case 27:
-#line 321 "parser.y"
+#line 245 "parser.y"
     { (yyval.int_val) = TYPE_CHAR; ;}
     break;
 
   case 28:
-#line 322 "parser.y"
+#line 246 "parser.y"
     { (yyval.int_val) = TYPE_BOOL; ;}
     break;
 
   case 29:
-#line 323 "parser.y"
+#line 247 "parser.y"
     { (yyval.int_val) = TYPE_VOID; ;}
     break;
 
   case 32:
-#line 333 "parser.y"
+#line 257 "parser.y"
     {
             emit(OP_OR, 0, 0.0);
         ;}
     break;
 
   case 34:
-#line 341 "parser.y"
+#line 265 "parser.y"
     {
             emit(OP_AND, 0, 0.0);
         ;}
     break;
 
   case 36:
-#line 349 "parser.y"
+#line 273 "parser.y"
     {
             emit(OP_EQ, 0, 0.0);
         ;}
     break;
 
   case 37:
-#line 353 "parser.y"
+#line 277 "parser.y"
     {
             emit(OP_NEQ, 0, 0.0);
         ;}
     break;
 
   case 39:
-#line 361 "parser.y"
+#line 285 "parser.y"
     {
             emit(OP_LT, 0, 0.0);
         ;}
     break;
 
   case 40:
-#line 365 "parser.y"
+#line 289 "parser.y"
     {
             emit(OP_LTE, 0, 0.0);
         ;}
     break;
 
   case 41:
-#line 369 "parser.y"
+#line 293 "parser.y"
     {
             emit(OP_GT, 0, 0.0);
         ;}
     break;
 
   case 42:
-#line 373 "parser.y"
+#line 297 "parser.y"
     {
             emit(OP_GTE, 0, 0.0);
         ;}
     break;
 
   case 44:
-#line 381 "parser.y"
+#line 305 "parser.y"
     {
             emit(OP_ADD, 0, 0.0);
         ;}
     break;
 
   case 45:
-#line 385 "parser.y"
+#line 309 "parser.y"
     {
             emit(OP_SUB, 0, 0.0);
         ;}
     break;
 
   case 47:
-#line 393 "parser.y"
+#line 317 "parser.y"
     {
             emit(OP_MUL, 0, 0.0);
         ;}
     break;
 
   case 48:
-#line 397 "parser.y"
+#line 321 "parser.y"
     {
             emit(OP_DIV, 0, 0.0);
         ;}
     break;
 
   case 49:
-#line 401 "parser.y"
+#line 325 "parser.y"
     {
             emit(OP_MOD, 0, 0.0);
         ;}
     break;
 
   case 50:
-#line 408 "parser.y"
+#line 332 "parser.y"
     {
             emit(OP_NOT, 0, 0.0);
         ;}
     break;
 
   case 53:
-#line 414 "parser.y"
+#line 338 "parser.y"
     {
             Sym* s = sym_lookup((yyvsp[(1) - (1)].string_val));
             if (!s) {
@@ -2061,7 +1985,7 @@ yyreduce:
     break;
 
   case 54:
-#line 428 "parser.y"
+#line 352 "parser.y"
     {
             Sym* s = sym_lookup((yyvsp[(1) - (4)].string_val));
             if (!s) {
@@ -2077,7 +2001,7 @@ yyreduce:
     break;
 
   case 61:
-#line 453 "parser.y"
+#line 377 "parser.y"
     {
             int jmp_false = emit(OP_JUMP_IF_FALSE, 0, 0.0);
             (yyval.int_val) = jmp_false;
@@ -2085,7 +2009,7 @@ yyreduce:
     break;
 
   case 62:
-#line 458 "parser.y"
+#line 382 "parser.y"
     {
             int jmp_false = (yyvsp[(5) - (8)].int_val);
             int jmp_end = emit(OP_JUMP, 0, 0.0);
@@ -2095,7 +2019,7 @@ yyreduce:
     break;
 
   case 63:
-#line 465 "parser.y"
+#line 389 "parser.y"
     {
             int jmp_end = (yyvsp[(9) - (13)].int_val);
             code[jmp_end].a = code_size;
@@ -2103,14 +2027,14 @@ yyreduce:
     break;
 
   case 64:
-#line 472 "parser.y"
+#line 396 "parser.y"
     {
         (yyval.int_val) = code_size;
     ;}
     break;
 
   case 65:
-#line 478 "parser.y"
+#line 402 "parser.y"
     {
         int j = emit(OP_JUMP_IF_FALSE, 0, 0.0);
         (yyval.int_val) = j;
@@ -2118,7 +2042,7 @@ yyreduce:
     break;
 
   case 66:
-#line 486 "parser.y"
+#line 410 "parser.y"
     {
             int start = (yyvsp[(2) - (9)].int_val);
             int jmp_false = (yyvsp[(6) - (9)].int_val);
@@ -2128,105 +2052,105 @@ yyreduce:
     break;
 
   case 67:
-#line 496 "parser.y"
+#line 420 "parser.y"
     {
             semantic_error("do-while loop not supported in VM yet");
         ;}
     break;
 
   case 68:
-#line 503 "parser.y"
+#line 427 "parser.y"
     {
             semantic_error("for loop not supported in VM yet");
         ;}
     break;
 
   case 70:
-#line 514 "parser.y"
+#line 438 "parser.y"
     {
             semantic_error("user-defined functions not supported in VM yet");
         ;}
     break;
 
   case 77:
-#line 538 "parser.y"
+#line 462 "parser.y"
     { (yyval.int_val) = BI_ABS; ;}
     break;
 
   case 78:
-#line 539 "parser.y"
+#line 463 "parser.y"
     { (yyval.int_val) = BI_MIN; ;}
     break;
 
   case 79:
-#line 540 "parser.y"
+#line 464 "parser.y"
     { (yyval.int_val) = BI_MAX; ;}
     break;
 
   case 80:
-#line 541 "parser.y"
+#line 465 "parser.y"
     { (yyval.int_val) = BI_SQRT; ;}
     break;
 
   case 81:
-#line 542 "parser.y"
+#line 466 "parser.y"
     { (yyval.int_val) = BI_POW; ;}
     break;
 
   case 82:
-#line 543 "parser.y"
+#line 467 "parser.y"
     { (yyval.int_val) = BI_CHECKLINELEFT; ;}
     break;
 
   case 83:
-#line 544 "parser.y"
+#line 468 "parser.y"
     { (yyval.int_val) = BI_CHECKLINERIGHT; ;}
     break;
 
   case 84:
-#line 545 "parser.y"
+#line 469 "parser.y"
     { (yyval.int_val) = BI_ACCELERATE; ;}
     break;
 
   case 85:
-#line 546 "parser.y"
+#line 470 "parser.y"
     { (yyval.int_val) = BI_SETFORWARD; ;}
     break;
 
   case 86:
-#line 547 "parser.y"
+#line 471 "parser.y"
     { (yyval.int_val) = BI_SETBACKWARD; ;}
     break;
 
   case 87:
-#line 548 "parser.y"
+#line 472 "parser.y"
     { (yyval.int_val) = BI_BRAKE; ;}
     break;
 
   case 88:
-#line 549 "parser.y"
+#line 473 "parser.y"
     { (yyval.int_val) = BI_TURNLEFT; ;}
     break;
 
   case 89:
-#line 550 "parser.y"
+#line 474 "parser.y"
     { (yyval.int_val) = BI_TURNRIGHT; ;}
     break;
 
   case 90:
-#line 551 "parser.y"
+#line 475 "parser.y"
     { (yyval.int_val) = BI_TURNANGLE; ;}
     break;
 
   case 91:
-#line 556 "parser.y"
+#line 480 "parser.y"
     {
             emit(OP_CALL_BUILTIN, (yyvsp[(1) - (4)].int_val), (double)(yyvsp[(3) - (4)].int_val));
         ;}
     break;
 
   case 92:
-#line 560 "parser.y"
+#line 484 "parser.y"
     {
             Sym* s = sym_lookup((yyvsp[(1) - (4)].string_val));
             if (!s || s->kind != SYM_FUNC) {
@@ -2237,70 +2161,70 @@ yyreduce:
     break;
 
   case 93:
-#line 571 "parser.y"
+#line 495 "parser.y"
     {
             (yyval.int_val) = 1 + (yyvsp[(2) - (2)].int_val);
         ;}
     break;
 
   case 94:
-#line 575 "parser.y"
+#line 499 "parser.y"
     {
             (yyval.int_val) = 0;
         ;}
     break;
 
   case 95:
-#line 582 "parser.y"
+#line 506 "parser.y"
     {
             (yyval.int_val) = 1 + (yyvsp[(3) - (3)].int_val);
         ;}
     break;
 
   case 96:
-#line 586 "parser.y"
+#line 510 "parser.y"
     {
             (yyval.int_val) = 0;
         ;}
     break;
 
   case 99:
-#line 598 "parser.y"
+#line 522 "parser.y"
     {
             emit(OP_PUSH_NUM, 0, -(double)(yyvsp[(2) - (2)].int_val));
         ;}
     break;
 
   case 100:
-#line 602 "parser.y"
+#line 526 "parser.y"
     {
             emit(OP_PUSH_NUM, 0, (double)(yyvsp[(1) - (1)].int_val));
         ;}
     break;
 
   case 101:
-#line 609 "parser.y"
+#line 533 "parser.y"
     {
             emit(OP_PUSH_NUM, 0, -(double)(yyvsp[(2) - (2)].float_val));
         ;}
     break;
 
   case 102:
-#line 613 "parser.y"
+#line 537 "parser.y"
     {
             emit(OP_PUSH_NUM, 0, (double)(yyvsp[(1) - (1)].float_val));
         ;}
     break;
 
   case 103:
-#line 620 "parser.y"
+#line 544 "parser.y"
     {
             emit(OP_PUSH_NUM, 0, 1.0);
         ;}
     break;
 
   case 104:
-#line 624 "parser.y"
+#line 548 "parser.y"
     {
             emit(OP_PUSH_NUM, 0, 0.0);
         ;}
@@ -2308,7 +2232,7 @@ yyreduce:
 
 
 /* Line 1267 of yacc.c.  */
-#line 2312 "parser.tab.c"
+#line 2236 "parser.tab.c"
       default: break;
     }
   YY_SYMBOL_PRINT ("-> $$ =", yyr1[yyn], &yyval, &yyloc);
@@ -2522,279 +2446,10 @@ yyreturn:
 }
 
 
-#line 641 "parser.y"
+#line 565 "parser.y"
 
 
 void yyerror(const char* s) {
     fprintf(stderr, "Syntax error: %s\n", s);
-}
-
-void run_vm(void) {
-    double stack[1024];
-    int sp = -1;
-    int pc = 0;
-
-    for (;;) {
-        Instr in = code[pc];
-        switch (in.op) {
-        case OP_PUSH_NUM:
-            sp++;
-            stack[sp] = in.d;
-            pc++;
-            break;
-        case OP_LOAD:
-            sp++;
-            stack[sp] = vm_memory[in.a];
-            pc++;
-            break;
-        case OP_STORE:
-            vm_memory[in.a] = stack[sp];
-            sp--;
-            pc++;
-            break;
-        case OP_ADD: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = a + b;
-            pc++;
-            break;
-        }
-        case OP_SUB: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = a - b;
-            pc++;
-            break;
-        }
-        case OP_MUL: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = a * b;
-            pc++;
-            break;
-        }
-        case OP_DIV: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = a / b;
-            pc++;
-            break;
-        }
-        case OP_MOD: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = fmod(a, b);
-            pc++;
-            break;
-        }
-        case OP_LT: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a < b);
-            pc++;
-            break;
-        }
-        case OP_LTE: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a <= b);
-            pc++;
-            break;
-        }
-        case OP_GT: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a > b);
-            pc++;
-            break;
-        }
-        case OP_GTE: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a >= b);
-            pc++;
-            break;
-        }
-        case OP_EQ: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a == b);
-            pc++;
-            break;
-        }
-        case OP_NEQ: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a != b);
-            pc++;
-            break;
-        }
-        case OP_AND: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(to_bool(a) && to_bool(b));
-            pc++;
-            break;
-        }
-        case OP_OR: {
-            double b = stack[sp--];
-            double a = stack[sp--];
-            stack[++sp] = to_bool(to_bool(a) || to_bool(b));
-            pc++;
-            break;
-        }
-        case OP_NOT: {
-            double a = stack[sp--];
-            stack[++sp] = to_bool(a) ? 0.0 : 1.0;
-            pc++;
-            break;
-        }
-        case OP_JUMP:
-            pc = in.a;
-            break;
-        case OP_JUMP_IF_FALSE: {
-            double cond = stack[sp--];
-            if (to_bool(cond) == 0.0) {
-                pc = in.a;
-            } else {
-                pc++;
-            }
-            break;
-        }
-        case OP_CALL_BUILTIN: {
-            int id = in.a;
-            int argc = (int)in.d;
-            double args[8];
-            int i;
-            for (i = argc - 1; i >= 0; --i) {
-                args[i] = stack[sp--];
-            }
-            double res = 0.0;
-            switch (id) {
-            case BI_ABS:
-                if (argc >= 1) res = fabs(args[0]);
-                break;
-            case BI_MIN:
-                if (argc >= 2) res = args[0] < args[1] ? args[0] : args[1];
-                break;
-            case BI_MAX:
-                if (argc >= 2) res = args[0] > args[1] ? args[0] : args[1];
-                break;
-            case BI_SQRT:
-                if (argc >= 1) res = sqrt(args[0]);
-                break;
-            case BI_POW:
-                if (argc >= 2) res = pow(args[0], args[1]);
-                break;
-            case BI_CHECKLINELEFT:
-                printf("checkLineLeft() -> 1\n");
-                res = 1.0;
-                break;
-            case BI_CHECKLINERIGHT:
-                printf("checkLineRight() -> 1\n");
-                res = 1.0;
-                break;
-            case BI_ACCELERATE:
-                if (argc >= 1) {
-                    printf("accelerate(%f)\n", args[0]);
-                }
-                res = 0.0;
-                break;
-            case BI_SETFORWARD:
-                if (argc >= 1) {
-                    printf("setForward(%f)\n", args[0]);
-                }
-                res = 0.0;
-                break;
-            case BI_SETBACKWARD:
-                if (argc >= 1) {
-                    printf("setBackward(%f)\n", args[0]);
-                }
-                res = 0.0;
-                break;
-            case BI_BRAKE:
-                printf("brake()\n");
-                res = 0.0;
-                break;
-            case BI_TURNLEFT:
-                if (argc >= 1) {
-                    printf("turnLeft(%f)\n", args[0]);
-                }
-                res = 0.0;
-                break;
-            case BI_TURNRIGHT:
-                if (argc >= 1) {
-                    printf("turnRight(%f)\n", args[0]);
-                }
-                res = 0.0;
-                break;
-            case BI_TURNANGLE:
-                if (argc >= 1) {
-                    printf("turnAngle(%f)\n", args[0]);
-                }
-                res = 0.0;
-                break;
-            default:
-                res = 0.0;
-                break;
-            }
-            stack[++sp] = res;
-            pc++;
-            break;
-        }
-        case OP_POP: {
-            if (sp < 0) {
-                fprintf(stderr, "Runtime error: POP on empty stack\n");
-                exit(1);
-            }
-            sp--;
-            pc++;
-            break;
-        }
-        case OP_LOAD_IND: {
-            double addr = stack[sp--];
-            int i = (int)addr;
-            if (i < 0 || i >= MAX_VARS) {
-                fprintf(stderr, "Runtime error: invalid indirect load address %d\n", i);
-                exit(1);
-            }
-            stack[++sp] = vm_memory[i];
-            pc++;
-            break;
-        }
-        case OP_STORE_IND: {
-            double value = stack[sp--];
-            double addr = stack[sp--];
-            int i = (int)addr;
-            if (i < 0 || i >= MAX_VARS) {
-                fprintf(stderr, "Runtime error: invalid indirect store address %d\n", i);
-                exit(1);
-            }
-            vm_memory[i] = value;
-            pc++;
-            break;
-        }
-        case OP_HALT:
-            printf("Ejecucion terminada\n");
-            return;
-        default:
-            fprintf(stderr, "Unknown opcode %d\n", in.op);
-            return;
-        }
-    }
-}
-
-void save_bytecode(const char* filename) {
-    FILE* f = fopen(filename, "w");
-    int i;
-    if (!f) {
-        perror("Error al abrir archivo de bytecode");
-        return;
-    }
-    fprintf(f, "%d\n", code_size);
-    for (i = 0; i < code_size; i++) {
-        fprintf(f, "%d %d %.17g\n", code[i].op, code[i].a, code[i].d);
-    }
-    fclose(f);
 }
 

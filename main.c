@@ -2,12 +2,10 @@
 #include <stdlib.h>
 #include <string.h>
 #include "parser.tab.h"
+#include "vm.h"
 
 extern FILE* yyin;
 int yyparse(void);
-
-void run_vm(void);
-void save_bytecode(const char* filename);
 
 int main(int argc, char** argv) {
     if (argc < 2) {
