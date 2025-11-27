@@ -1,17 +1,17 @@
 ChambaScript
 
 ## INDICE 
-- [1. VISION GENERAL](#1.-vision-general)
-- [2. FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC](#2.-flujo-completo-de-compilacion-y-ejecucion-en-pc)
-- [3. LEXER.L – ANALIZADOR LEXICO](#3.-lexer.l-–-analizador-lexico)
-- [4. PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE](#4.-parser.y-–-analisis-sintactico,-tabla-de-simbolos-y-generacion-de-bytecode)
-- [5. MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)](#5.-maquina-virtual-en-pc---run_vm-(vm.c))
-- [6. SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC](#6.-save_bytecode---formato-del-archivo-.chamba.bc)
-- [7. MAIN.C – PUNTO DE ENTRADA EN PC](#7.-main.c---punto-de-entrada-en-pc)
-- [8. MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)](#8.-maquina-virtual-en-arduino---chamba-car-(runtime-en-hardware))
+- [VISION GENERAL](#vision-general)
+- [FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC](#flujo-completo-de-compilacion-y-ejecucion-en-pc)
+- [LEXER.L – ANALIZADOR LEXICO](#lexer.l-–-analizador-lexico)
+- [PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE](#parser.y-–-analisis-sintactico,-tabla-de-simbolos-y-generacion-de-bytecode)
+- [MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)](#maquina-virtual-en-pc---run_vm-(vm.c))
+- [SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC](#save_bytecode---formato-del-archivo-.chamba.bc)
+- [MAIN.C – PUNTO DE ENTRADA EN PC](#main.c---punto-de-entrada-en-pc)
+- [MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)](#maquina-virtual-en-arduino---chamba-car-(runtime-en-hardware))
 
 
-## 1. VISION GENERAL
+## VISION GENERAL
 
 
 El proyecto es un pequeño compilador–intérprete para el lenguaje ChambaScript, pensado para controlar un carrito seguidor de línea mediante un lenguaje de alto nivel y una máquina virtual.
@@ -50,7 +50,7 @@ El main.c orquesta el flujo en PC: abre el archivo fuente, llama a yyparse, gene
 
 La VM de Arduino no compila nada: únicamente carga y ejecuta el bytecode que fue generado en la PC.
 
-## 2. FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC
+## FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC
 
 2.1 Instalación de herramientas necesarias
 
@@ -111,7 +111,7 @@ Llama a run_vm() (en vm.c) para ejecutar el bytecode en la VM de PC:
 
 útil para depuración, ya que imprime las llamadas a funciones builtin (por ejemplo accelerate(200), turnLeft(90), etc.).
 
-## 3. LEXER.L – ANALIZADOR LEXICO
+## LEXER.L – ANALIZADOR LEXICO
 
 El lexer está escrito con Flex. Su objetivo es leer texto fuente .chamba y producir tokens que el parser (parser.y) entiende.
 
@@ -233,7 +233,7 @@ Caracter no reconocido: X
 
 El lexer no toma decisiones semánticas: sólo clasifica el texto en tokens y rellena yylval cuando es necesario (identificadores y literales).
 
-## 4. PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE
+## PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE
 
 4.1 Zona de código C inicial
 
@@ -746,7 +746,7 @@ vacío → 0.
 
 El número de argumentos se pasa en in.d a OP_CALL_BUILTIN, y luego la VM sabe cuántos valores debe sacar de la pila.
 
-## 5. MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)
+## MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)
 
 run_vm es un intérprete de bytecode basado en pila que se ejecuta en la PC para depuración.
 
@@ -861,7 +861,7 @@ Validar que el compilador genera bytecode correcto.
 
 Ver la secuencia de llamadas a funciones builtin del carrito antes de portar a Arduino.
 
-## 6. SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC
+## SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC
 
 save_bytecode(const char* filename):
 
@@ -895,7 +895,7 @@ Ejemplo (simplificado):
 
 La VM en PC y la VM en Arduino leen este mismo formato de archivo.
 
-## 7. MAIN.C – PUNTO DE ENTRADA EN PC
+## MAIN.C – PUNTO DE ENTRADA EN PC
 
 main(int argc, char** argv):
 
@@ -933,7 +933,7 @@ Devuelve 1.
 
 Este flujo es el “toolchain” de PC: compilar, generar bytecode y simular la ejecución.
 
-## 8. MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)
+## MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)
 
 Además de la VM en PC, el proyecto incluye una VM adaptada a Arduino (ChambaCar.ino) con estas características:
 
