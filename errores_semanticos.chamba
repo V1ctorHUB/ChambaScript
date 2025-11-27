@@ -1,7 +1,0 @@
-var x : int = 5;
-var y : int;
-y = x + 1;
-const c : int = 3.14;
-
-
-mario_no_retire_la_materia_plis(5);

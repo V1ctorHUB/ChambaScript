@@ -1,11 +1,12 @@
-# ChambaScript
+ChambaScript
 
 =========================================================
-
-VISION GENERAL
+                    VISION GENERAL
 =========================================================
 
-El proyecto es un pequeño compilador–intérprete para el lenguaje ChambaScript:
+El proyecto es un pequeño compilador–intérprete para el lenguaje ChambaScript, pensado para controlar un carrito seguidor de línea mediante un lenguaje de alto nivel y una máquina virtual.
+
+Flujo lógico general:
 
 Toma un archivo fuente .chamba.
 
@@ -15,217 +16,395 @@ El parser (parser.y) hace:
 
 análisis sintáctico,
 
-comprobaciones semánticas básicas (variables, arrays, etc.),
+comprobaciones semánticas básicas (variables, constantes, arrays),
 
 generación de bytecode para una máquina virtual de pila.
 
-El bytecode se guarda en un archivo .chamba.bc
+El bytecode se guarda en un archivo .chamba.bc.
 
-La máquina virtual (run_vm) ejecuta ese bytecode y simula:
+Existen dos “runtimes” que consumen ese bytecode:
+
+VM en PC (dentro del mismo proyecto): interpreta el bytecode y simula:
+
 operaciones aritméticas y lógicas,
-variables y arreglos,
-estructuras de control (if, while),
-funciones builtin del carrito (accelerate, turnLeft, etc.).
 
-El main.c solo orquesta el flujo: abrir archivo, llamar a yyparse, guardar bytecode y ejecutar la VM.
+variables y arreglos,
+
+estructuras de control (if, while),
+
+llamadas a funciones builtin (incluyendo las del carrito).
+
+VM en Arduino (sketch ChambaCar.ino): lee el mismo .chamba.bc desde una SD, ejecuta el bytecode y controla físicamente el carrito (motores y sensores).
+
+El main.c orquesta el flujo en PC: abre el archivo fuente, llama a yyparse, genera el bytecode .chamba.bc, lo guarda en disco y, opcionalmente, ejecuta la VM de PC para depuración.
+
+La VM de Arduino no compila nada: únicamente carga y ejecuta el bytecode que fue generado en la PC.
 
 =========================================================
-2. FLUJO COMPLETO DE COMPILACION Y EJECUCION
+2. FLUJO COMPLETO DE COMPILACION Y EJECUCION EN PC
 
-instalacion de los recursos necesarios: 
+2.1 Instalación de herramientas necesarias
 
--macOS:
-Instalar Homebrew: 
-/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+macOS (con Homebrew):
+
+Instalar Homebrew:
+
+/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh
+)"
 
 Instalar Bison y Flex:
+
 brew install bison flex
 
-verificaciones:
+Verificaciones:
+
 brew info bison
 brew info flex
 
--Linux (Debian / Ubuntu y derivados):
+Linux (Debian / Ubuntu y derivados):
+
 sudo apt update
 sudo apt install flex bison
 
--Linux (Fedora / RHEL / CentOS):
+Linux (Fedora / RHEL / CentOS):
+
 sudo dnf install flex bison
 
--Linux (Arch / Manjaro):
+Linux (Arch / Manjaro):
+
 sudo pacman -S flex bison
 
-Compilación de las herramientas:
+2.2 Compilación del compilador/VM de ChambaScript
+
+En la carpeta del proyecto (donde están parser.y, lexer.l, main.c, vm.c):
+
 bison -d parser.y
 flex lexer.l
 gcc -Wall -Wextra -o chamba main.c parser.tab.c lex.yy.c vm.c -lm
 
+Esto genera el ejecutable chamba.
 
-Ejecución de un programa:
-./chamba <programa>.chamba
+2.3 Ejecución de un programa .chamba en PC
+
+./chamba programa.chamba
+
+Este comando:
+
+Ejecuta análisis léxico, sintáctico y semántico.
 
 Si todo va bien:
 
-Imprime “Analisis sintactico y semantico completado exitosamente”.
+Imprime: Analisis sintactico y semantico completado exitosamente.
+
 Genera programa.chamba.bc con el bytecode.
-Llama a run_vm() para ejecutar el bytecode y simular el programa.
+
+Llama a run_vm() (en vm.c) para ejecutar el bytecode en la VM de PC:
+
+útil para depuración, ya que imprime las llamadas a funciones builtin (por ejemplo accelerate(200), turnLeft(90), etc.).
 
 =========================================================
 3. LEXER.L – ANALIZADOR LEXICO
 
-El lexer está escrito con Flex. 
-Su objetivo es leer texto y producir tokens para Bison.
+El lexer está escrito con Flex. Su objetivo es leer texto fuente .chamba y producir tokens que el parser (parser.y) entiende.
 
-Definiciones de patrones:
--DIGIT: un dígito [0-9].
--LETTER: una letra o underscore [A-Za-z_].
--ID: un identificador, que empieza con LETTER y puede tener LETTER o DIGIT.
+3.1 Definiciones de patrones
 
-Palabras reservadas:
--var, const, func, return, if, else, while, do, for, break, continue, pass
--tipos: int, tiny, long, float, char, bool, void
--booleanos: true, false
+DIGIT: un dígito 0–9.
 
-funciones builtin del lenguaje:
-abs, min, max, sqrt, pow,
+LETTER: una letra o underscore [A-Za-z_].
+
+ID: un identificador, que empieza con LETTER y puede contener LETTER o DIGIT:
+
+ID = LETTER (LETTER | DIGIT)*
+
+3.2 Palabras reservadas
+
+Tokens para palabras clave del lenguaje:
+
+Control y declaración:
+
+var, const, func, return, if, else, while, do, for, break, continue, pass.
+
+Tipos:
+
+int, tiny, long, float, char, bool, void.
+
+Booleanos:
+
+true, false.
+
+3.3 Funciones builtin del lenguaje
+
+Reconoce los nombres de funciones builtin y los mapea a tokens específicos:
+
+Matemáticas genéricas:
+
+abs, min, max, sqrt, pow.
+
+Funciones relacionadas con el carrito:
+
 checkLineLeft, checkLineRight,
+
 accelerate, setForward, setBackward, brake,
-turnLeft, turnRight, turnAngle
 
-Cada una se mapea a un token específico (VAR, CONST, IF, WHILE, ABS, MIN, ACCELERATE, etc.) que está declarado en parser.y
+turnLeft, turnRight, turnAngle.
 
-Operadores y símbolos:
--Comparación: ==, !=, <=, >=, <, >
--Lógicos: &&, ||, !
--Aritméticos: +, -, *, /, %
--Asignación y puntuación: =, (, ), {, }, [, ], ;, :, ,
+Estas se convierten en tokens como ABS, MIN, ACCELERATE, CHECKLINELEFT, etc., que están declarados en parser.y.
 
-Literales numéricos:
--Flotantes: {DIGIT}+"."{DIGIT}+
-Se convierten a double con atof y se guardan en yylval.float_val. Token: FLOAT_LITERAL.
+3.4 Operadores y símbolos
 
--Enteros: {DIGIT}+
-Se convierten a int con atoi y se guardan en yylval.int_val. Token: INTEGER.
+Comparación:
 
-Identificadores:
-{ID}
-Se copian con strdup(yytext) a yylval.string_val y se devuelven como token IDENTIFIER.
+==, !=, <=, >=, <, >.
 
-Comentarios:
--Comentarios de línea: "//" seguido de cualquier cosa hasta el salto de línea. Se ignoran.
--Comentarios multilínea: "/* ... /"
-Se consume carácter por carácter usando input() hasta detectar la secuencia "/". También se ignoran.
+Lógicos:
 
-Espacios en blanco:
-[ \t\r\n]+
-Se ignoran.
+&&, ||, !.
 
-Cualquier otro carácter:
-Se imprime un mensaje de error “Caracter no reconocido: X”.
+Aritméticos:
 
-El lexer no conoce nada de la semántica; solo clasifica texto en tokens y rellena yylval cuando hace falta (identificadores y literales).
++, -, *, /, %.
+
+Asignación y puntuación:
+
+=, (, ), {, }, [, ], ;, :, ,.
+
+3.5 Literales numéricos
+
+Flotantes:
+
+Patrón: {DIGIT}+"."{DIGIT}+
+
+Se convierten a double con atof(yytext) y se almacenan en yylval.float_val.
+
+Token: FLOAT_LITERAL.
+
+Enteros:
+
+Patrón: {DIGIT}+
+
+Se convierten a int con atoi(yytext) y se almacenan en yylval.int_val.
+
+Token: INTEGER.
+
+3.6 Identificadores
+
+Patrón: {ID}
+
+Se copian con strdup(yytext) a yylval.string_val.
+
+Se devuelven como token IDENTIFIER.
+
+3.7 Comentarios
+
+Comentarios de línea:
+
+Prefijo // seguido de cualquier cosa hasta el salto de línea.
+
+Se ignoran completamente.
+
+Comentarios multilínea:
+
+Delimitadores /* y */.
+
+Se consume carácter por carácter usando input() hasta ver la secuencia */.
+
+También se ignoran.
+
+3.8 Espacios en blanco
+
+Patrón: [ \t\r\n]+
+
+Se ignoran; el lexer simplemente salta estos caracteres.
+
+3.9 Caracteres desconocidos
+
+Cualquier otro carácter produce un mensaje:
+
+Caracter no reconocido: X
+
+El lexer no toma decisiones semánticas: sólo clasifica el texto en tokens y rellena yylval cuando es necesario (identificadores y literales).
 
 =========================================================
 4. PARSER.Y – ANALISIS SINTACTICO, TABLA DE SIMBOLOS Y GENERACION DE BYTECODE
-4.1. Zona de código C inicial
+
+4.1 Zona de código C inicial
 
 Incluye:
-stdio.h, stdlib.h, string.h, stdarg.h, math.h
 
-Declaraciones de yylex, yyerror, yyin.
-Definición de tipos para la tabla de símbolos:
-SymKind: SYM_VAR, SYM_CONST, SYM_FUNC.
+stdio.h, stdlib.h, string.h, stdarg.h, math.h.
+
+Declara:
+
+int yylex(void);
+
+void yyerror(const char* s);
+
+extern FILE* yyin;
+
+Define la tabla de símbolos:
+
+SymKind:
+
+SYM_VAR, SYM_CONST, SYM_FUNC.
 
 struct Sym:
--name: nombre de la variable/constante/función.
--kind: tipo de símbolo (variable, constante, función).
--type: tipo declarado (TOKEN del tipo: TYPE_INT, TYPE_FLOAT, etc.).
--scope_level: nivel de ámbito (actualmente se usa un solo nivel).
--addr: dirección base en la memoria de la VM.
--is_array: 1 si es arreglo, 0 si es escalar.
--length: número de elementos (1 para escalar).
--next: siguiente símbolo en la cadena para el mismo hash.
 
-Tabla de símbolos:
--sym_table: arreglo de punteros a Sym con tamaño fijo SYM_TABLE_SIZE.
--current_scope: entero para el nivel de scope (en esta fase se mantiene en 0).
--next_addr: siguiente índice libre en vm_memory.
--vm_memory: arreglo double de tamaño MAX_VARS que modela la memoria de la VM.
+name: nombre del símbolo (variable/constante/función).
 
-Funciones de la tabla de símbolos:
--sym_hash(nombre): usa un hash tipo djb2 para mapear strings a índices en la tabla.
--sym_lookup(nombre): busca cualquier símbolo con ese nombre en toda la tabla.
--sym_lookup_local(nombre): busca solo en el scope actual (current_scope).
--sym_insert(nombre, kind, type, length):
+kind: clase del símbolo (SYM_VAR, SYM_CONST, SYM_FUNC).
 
-Crea un nuevo Sym.
-Ajusta length (1 si se pasa <= 0).
-Marca is_array si length > 1.
+type: tipo declarado (por ahora token del tipo: TYPE_INT, TYPE_FLOAT, etc.).
 
-Si es variable o constante:
-Asigna un bloque de length posiciones en vm_memory a partir de next_addr.
-Inicializa esas posiciones a 0.0.
+scope_level: nivel de ámbito (en esta versión se trabaja principalmente con un único nivel global).
+
+addr: dirección base en la memoria de la VM.
+
+is_array: indica si es arreglo (1) o escalar (0).
+
+length: número de elementos (1 para un escalar).
+
+next: siguiente símbolo en la lista enlazada para el mismo bucket de hash.
+
+Estructuras globales:
+
+sym_table[SYM_TABLE_SIZE]: tabla de símbolos como hash.
+
+current_scope: entero para el nivel de scope (por ahora = 0).
+
+next_addr: siguiente índice libre en vm_memory.
+
+vm_memory[MAX_VARS]: arreglo de double que modela la memoria de datos de la VM.
+
+4.2 Funciones de la tabla de símbolos
+
+sym_hash(nombre): hash tipo djb2 para mapear strings a índices de la tabla.
+
+sym_lookup(nombre): busca un símbolo por nombre en toda la tabla (cualquier scope).
+
+sym_lookup_local(nombre): busca un símbolo sólo en el scope actual.
+
+sym_insert(nombre, kind, type, length):
+
+Crea un Sym nuevo.
+
+Ajusta length (si es <= 0, se pone 1).
+
+Si length > 1, marca is_array = 1.
+
+Si el símbolo es variable o constante:
+
+Asigna un bloque de length posiciones consecutivas en vm_memory a partir de next_addr.
+
+Inicializa esas celdas a 0.0.
+
 Incrementa next_addr en length.
-Inserta el símbolo en la lista enlazada correspondiente al hash.
 
-Errores semánticos:
-semantic_error(fmt, ...): imprime “Semantic error: ...” y termina el programa.
+Inserta el símbolo en la lista enlazada asociada al índice de hash calculado.
 
-4.2. Definición de bytecode y generación de instrucciones
+semantic_error(fmt, ...):
+
+Imprime Semantic error: ... y termina el programa.
+
+Se usa para errores como:
+
+variable redeclarada,
+
+asignación a constante,
+
+uso de identificador no declarado,
+
+uso incorrecto de arrays, etc.
+
+4.3 Definición de bytecode e instrucciones
+
 Se define:
-OpCode: enum con todas las instrucciones:
--OP_PUSH_NUM (empuja número a la pila)
--OP_LOAD (carga vm_memory[addr])
--OP_STORE (guarda en vm_memory[addr])
--OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD
--OP_LT, OP_LTE, OP_GT, OP_GTE, OP_EQ, OP_NEQ
--OP_AND, OP_OR, OP_NOT
--OP_JUMP, OP_JUMP_IF_FALSE
--OP_CALL_BUILTIN
--OP_POP
--OP_HALT
--OP_LOAD_IND (acceso indirecto para arreglos)
--OP_STORE_IND (escritura indirecta para arreglos)
+
+enum OpCode con las instrucciones soportadas por la VM (en PC y en Arduino):
+
+OP_PUSH_NUM (empuja un número literal).
+
+OP_LOAD (carga vm_memory[addr]).
+
+OP_STORE (almacena en vm_memory[addr]).
+
+OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD.
+
+OP_LT, OP_LTE, OP_GT, OP_GTE, OP_EQ, OP_NEQ.
+
+OP_AND, OP_OR, OP_NOT.
+
+OP_JUMP, OP_JUMP_IF_FALSE.
+
+OP_CALL_BUILTIN.
+
+OP_POP.
+
+OP_HALT.
+
+OP_LOAD_IND (lectura indirecta para arreglos: vm_memory[addr] donde addr se calcula en tiempo de ejecución).
+
+OP_STORE_IND (escritura indirecta para arreglos).
+
+En la VM de Arduino también existen OP_CALL y OP_RET como base para funciones de usuario, aunque en el compilador actual todavía no se generan.
 
 struct Instr:
--op: opcode
--a: entero auxiliar
--d: double auxiliar
--code[MAX_CODE]: arreglo de instrucciones.
--code_size: número de instrucciones generadas.
+
+op: opcode (OpCode).
+
+a: entero auxiliar (por ejemplo, dirección de memoria, índice de salto, id de builtin).
+
+d: double auxiliar (por ejemplo, literales numéricos o número de argumentos en builtins).
+
+code[MAX_CODE]: arreglo global de instrucciones.
+
+code_size: número de instrucciones generadas.
 
 Función emit(op, a, d):
--Inserta una instrucción en code[code_size].
--Devuelve el índice donde se insertó (útil para backpatch de saltos).
--Comprueba que no se exceda MAX_CODE.
+
+Inserta una instrucción en code[code_size].
+
+Incrementa code_size.
+
+Retorna el índice usado (sirve para backpatching, por ejemplo en saltos).
 
 Función to_bool(v):
-Convierte un double a 0.0 o 1.0 según sea falso o verdadero.
 
-Identificadores de builtins (BuiltinId):
--BI_ABS, BI_MIN, BI_MAX, BI_SQRT, BI_POW
--BI_CHECKLINELEFT, BI_CHECKLINERIGHT
--BI_ACCELERATE, BI_SETFORWARD, BI_SETBACKWARD
--BI_BRAKE, BI_TURNLEFT, BI_TURNRIGHT, BI_TURNANGLE
+Convierte un double a 0.0 o 1.0 según si es falso/verdadero.
 
-4.3. %union y tokens
+4.4 Builtins y %union
 
-%union define:
+Se define un enum BuiltinId:
 
--int_val (para enteros, tipos, índices de salto, etc.)
--float_val (para literales flotantes)
--string_val (para nombres de identificador)
+BI_ABS, BI_MIN, BI_MAX, BI_SQRT, BI_POW,
 
-Se declaran tokens con su tipo de atributo:
--IDENTIFIER usa string_val.
--INTEGER usa int_val.
--FLOAT_LITERAL usa float_val.
+BI_CHECKLINELEFT, BI_CHECKLINERIGHT,
 
-Se declaran tokens para:
--Palabras clave, tipos, operadores, funciones builtin.
--No terminales con tipo int_val: var_type, builtin_func, arguments, arguments_tail, array_part, while_start, while_jmp.
+BI_ACCELERATE, BI_SETFORWARD, BI_SETBACKWARD,
 
-4.4. Regla program
+BI_BRAKE, BI_TURNLEFT, BI_TURNRIGHT, BI_TURNANGLE.
+
+En el %union:
+
+int_val (enteros generales: tipos, tamaños, índices).
+
+float_val (para literales flotantes).
+
+string_val (nombres de identificadores).
+
+Tokens:
+
+IDENTIFIER usa string_val.
+
+INTEGER usa int_val.
+
+FLOAT_LITERAL usa float_val.
+
+No terminales con int_val:
+
+var_type, builtin_func, arguments, arguments_tail, array_part, while_start, while_jmp.
+
+4.5 Regla program
 
 program:
 statement_list
@@ -234,65 +413,147 @@ emit(OP_HALT, 0, 0.0);
 }
 ;
 
-Genera un OP_HALT al final, que hace que la VM termine la ejecución.
+Traducción:
 
-4.5. Lista de sentencias
+El programa es una lista de sentencias.
 
-– statement_list define una secuencia de statements separados por punto y coma, permitiendo también listas vacías.
-– statement agrupa todos los tipos de sentencia del lenguaje.
-– Las llamadas a funciones builtin usadas como statement descartan su valor de retorno con OP_POP, para no llenar la pila.
-– Cada statement genera bytecode en el orden en que aparece, y ese orden define la ejecución real de la máquina virtual.
-– Esta parte del parser conecta la sintaxis de alto nivel del programa con la secuencia lineal de instrucciones que interpreta la VM.
+Al final se añade un OP_HALT para indicar a la VM que termine la ejecución.
 
-4.6. Declaración de variables y constantes
+4.6 Lista de sentencias
 
-declaration maneja tres casos:
--var IDENT : tipo [size]
-Comprueba que no esté ya declarada en el mismo scope.
--sym_insert como SYM_VAR con ese tipo y tamaño.
-No genera bytecode extra: la reserva de memoria ya se hizo al insertar.
--var IDENT : tipo [size] = expresión
-Igual, pero exige que size sea 1 (solo escalar).
--sym_insert.
-La expresión deja el valor en la pila.
--OP_STORE en s->addr para guardar el valor inicial.
--const IDENT : tipo [size] = expresión
+statement_list:
+
+Permite:
+
+statement ; statement_list,
+
+statement ;,
+
+o lista vacía (ε).
+
+Genera bytecode de cada statement en el orden del código fuente.
+
+statement puede ser:
+
+declaration
+
+assignment
+
+control_structure
+
+function_call (en este caso se emite un OP_POP para descartar el valor de retorno).
+
+function_declaration (actualmente no genera código ejecutable, sólo error semántico).
+
+return_statement
+
+pass_statement
+
+break_statement
+
+continue_statement
+
+La combinación de statement_list + statement define el orden lineal de instrucciones en code[], que es exactamente el orden en que la VM las ejecuta.
+
+4.7 Declaración de variables y constantes
+
+Regla declaration:
+
+var IDENTIFIER : var_type array_part
+
+Comprueba que el identificador no exista en el scope actual (sym_lookup_local).
+
+Inserta símbolo como SYM_VAR con el tipo y tamaño (length) dados (sym_insert).
+
+No genera bytecode adicional: la reserva e inicialización de memoria se hace en la inserción.
+
+var IDENTIFIER : var_type array_part = expression
+
+Igual que arriba, pero además:
+
+Exige que array_part sea tamaño 1 (no se inicializan arrays enteros con un solo escalar).
+
+Después de la expresión, que deja un valor en la pila, emite OP_STORE en s->addr.
+
+const IDENTIFIER : var_type array_part = expression
+
 Similar a var, pero kind = SYM_CONST.
--No permite arrays constantes.
--Guarda el valor inicial con OP_STORE.
+
+No se permite array_part > 1 para constantes (no arrays constantes).
+
+Al final, OP_STORE inicializa la constante.
 
 array_part:
-[INTEGER] da length = ese entero.
-vacío da length = 1 (no es arreglo).
 
-4.7. Asignaciones
-assignment cubre:
-IDENT = expresión
-Busca el símbolo.
+[ INTEGER ] → length = INTEGER.
+
+vacío → length = 1.
+
+4.8 Asignaciones
+
+Regla assignment:
+
+Asignación a escalar:
+
+IDENTIFIER = expression
+
+Busca el símbolo (sym_lookup).
+
 Comprueba:
+
 que exista,
-que no sea const,
-que no sea array (por qué entonces falta índice).
-Emite OP_STORE en la dirección base.
-IDENT [ expresión ] = expresión
-Primero se procesa IDENT [ expresión ]:
-Busca símbolo.
-Comprueba que exista, que sea array y que no sea const.
-Emite:
-expresión deja el índice en la pila.
-OP_PUSH_NUM con la dirección base del array.
-OP_ADD para sumar base + indice → dirección efectiva.
-Luego se procesa la parte de ASSIGN expression:
-expresión deja el valor en la pila.
-OP_STORE_IND:
-Saca valor y dirección de la pila.
-Guarda vm_memory[addr] = valor.
 
-4.8. Tipos
+que no sea constante (SYM_CONST),
 
-var_type devuelve el token del tipo (TYPE_INT, TYPE_FLOAT, etc.) y se guarda en int_val para la tabla de símbolos. De momento la VM usa double para todos los datos; el tipo sirve para validaciones y documentación futura.
+que no sea array (is_array == 0).
 
-4.9. Expresiones y opcodes
+La expresión deja el valor en la pila.
+
+Se emite OP_STORE s->addr, que guarda en vm_memory[addr] y saca el valor de la pila.
+
+Asignación a arreglo:
+
+IDENTIFIER [ expression ] = expression
+
+Se divide en dos partes en el parser:
+
+IDENTIFIER LBRACKET expression RBRACKET:
+
+Busca el símbolo.
+
+Comprueba:
+
+que exista,
+
+que sea array,
+
+que no sea constante.
+
+Genera bytecode:
+
+expression deja el índice en la pila.
+
+OP_PUSH_NUM con la dirección base del array (s->addr).
+
+OP_ADD suma índice + base → produce en la pila la dirección efectiva.
+
+ASSIGN expression:
+
+La nueva expression deja el valor en la pila.
+
+OP_STORE_IND toma addr y value de la pila y hace vm_memory[addr] = value.
+
+Esto permite trabajar con arrays variables de forma indirecta.
+
+4.9 Tipos
+
+var_type:
+
+Mapea TYPE_INT, TYPE_TINY, TYPE_LONG, TYPE_FLOAT, TYPE_CHAR, TYPE_BOOL, TYPE_VOID a un entero que se guarda en int_val.
+
+En la VM actual se representa todo numéricamente como double, pero el tipo lógico se usa para validaciones semánticas y para futuras extensiones.
+
+4.10 Expresiones y precedencia
 
 Se siguen niveles clásicos de precedencia:
 
@@ -310,187 +571,186 @@ term (*, /, %)
 
 factor
 
-En cada nivel, la gramática genera el bytecode con la semántica de pila:
+Cada nivel usa el estilo “expresión izquierda + operador + expresión derecha” y genera bytecode de pila:
 
-Ejemplo additive:
+Evaluar operandos en orden.
+
+Aplicar la operación con el opcode correspondiente (OP_ADD, OP_SUB, OP_LT, etc.).
+
+Por ejemplo, para additive:
 
 additive PLUS term:
 
-primero se genera bytecode de additive (quedando A en la pila),
+Genera bytecode para additive (valor A en pila).
 
-luego el de term (quedando B),
+Luego para term (valor B en pila).
 
-luego OP_ADD que consume A y B y empuja A+B.
+Emite OP_ADD, que consume A y B y empuja A+B.
 
-Lo mismo para SUB, MUL, DIV, MOD, comparaciones, etc.
+NOT factor genera primero el factor y luego OP_NOT para invertir el booleano.
 
-NOT factor:
+4.11 Factor
 
-Se compila factor (deja valor).
-
-NOT añade OP_NOT, que invierte el booleano (1 → 0, 0 → 1).
-
-4.10. Factor: números, identificadores, arrays, booleanos y llamadas
-
-Casos:
+factor cubre:
 
 number:
 
-integer MINUS/positivo genera OP_PUSH_NUM con el valor correspondiente.
-
-float igual.
+integer o float, que generan OP_PUSH_NUM con el valor correspondiente (positivo o negativo).
 
 TRUE / FALSE:
 
-OP_PUSH_NUM 1.0 / 0.0.
+OP_PUSH_NUM 1.0 / OP_PUSH_NUM 0.0.
 
 IDENTIFIER:
 
-Se busca el símbolo.
+Busca el símbolo.
 
-Comprueba que exista, que tenga addr válido (sea var/const) y que no sea array.
+Comprueba que exista, que tenga dirección válida (addr >= 0) y que no sea array.
 
 Emite OP_LOAD s->addr.
 
-IDENTIFIER [ expresión ]:
+IDENTIFIER [ expression ]:
 
-Genera bytecode para expresión (índice en la pila).
+Similar a la asignación de arrays:
 
-Empuja la base del array (OP_PUSH_NUM addr).
+expression deja índice en la pila.
 
-OP_ADD → dirección efectiva.
+OP_PUSH_NUM con dirección base.
 
-OP_LOAD_IND → carga vm_memory[addr] y la deja en la pila.
+OP_ADD suma base + índice.
+
+OP_LOAD_IND lee vm_memory[addr] y empuja el valor.
 
 function_call:
 
-Se maneja con la regla function_call y builtin_func (ver abajo).
+Se maneja en una regla aparte, pero factor permite que una llamada devuelva un valor (por ejemplo, x = min(a, b);).
 
-4.11. Estructuras de control
+LPAREN expression RPAREN:
+
+Agrupa subexpresiones.
+
+4.12 Estructuras de control
+
+control_structure:
+
+if_statement
+
+while_loop
+
+do_while_loop (no soportado en VM por ahora, lanza semantic_error)
+
+for_loop (no soportado en VM por ahora, lanza semantic_error)
 
 If-else:
 
-La idea es:
+Traducción estándar:
 
-if (cond) { then_block } else { else_block }
+Evalúa la condición → valor en la pila.
 
-Se compila como:
+Emite OP_JUMP_IF_FALSE con destino pendiente (jmp_false).
 
-cond deja valor en la pila.
+Genera el bloque then.
 
-OP_JUMP_IF_FALSE jmp_false (destino aún desconocido).
+Emite OP_JUMP para saltarse el else (jmp_end).
 
-then_block...
+Backpatch: se rellena code[jmp_false].a con el inicio del bloque else.
 
-OP_JUMP jmp_end (salto para saltarse el else).
+Genera el bloque else.
 
-backpatch: code[jmp_false].a = inicio_else;
-
-else_block...
-
-backpatch: code[jmp_end].a = final_else;
-
-Se usa un atributo sintético (int_val) en if_statement para guardar las posiciones de los saltos, luego se rellenan.
+Backpatch: se rellena code[jmp_end].a con la posición al final del if-else.
 
 While:
 
-while_start:
-$$ = code_size;
+Se usa:
 
-while_jmp:
-$$ = emit(OP_JUMP_IF_FALSE, 0, 0.0);
+while_start para capturar el code_size (inicio del while).
 
-while_loop:
-WHILE while_start LPAREN boolean_expression RPAREN while_jmp LBRACE statement_list RBRACE
-{
-int start = $2;
-int jmp_false = $6;
-emit(OP_JUMP, start, 0.0);
-code[jmp_false].a = code_size;
-}
+while_jmp para emitir un OP_JUMP_IF_FALSE cuya dirección se rellena al final.
 
 Traducción:
 
-while_start captura la posición code_size al inicio del while (inicio de la condición).
+Marca start = code_size antes de la condición.
 
-Se genera boolean_expression.
+Compila la condición (boolean_expression).
 
-while_jmp emite un OP_JUMP_IF_FALSE con destino 0 por ahora, y devuelve su índice.
+Emite OP_JUMP_IF_FALSE jmp_false.
 
-Se genera el cuerpo LBRACE statement_list RBRACE.
+Genera el cuerpo del bucle.
 
-Al final:
+Emite OP_JUMP start para volver a la condición.
 
-Se emite OP_JUMP start para volver al principio de la condición.
+Rellena code[jmp_false].a con la posición al final del bucle.
 
-Se rellena code[jmp_false].a con la posición después del cuerpo (salida del bucle).
+Do-while y for:
 
-do_while_loop y for_loop:
+Por ahora no generan bytecode: se detectan y se lanza semantic_error("... not supported in VM yet").
 
-Actualmente emiten semantic_error indicando que no están soportados en la VM.
-
-4.12. Declaraciones de funciones y return
+4.13 Declaraciones y llamadas a funciones
 
 function_declaration:
 
-Detecta “func nombre(...) : tipo { ... }”.
+Reconoce func nombre (params) : tipo { statement_list }.
 
-De momento, no se genera código ejecutable para funciones de usuario; se llama semantic_error diciendo que no están soportadas.
+En esta versión del compilador, las funciones de usuario todavía no están soportadas a nivel de VM:
+
+Se lanza semantic_error("user-defined functions not supported in VM yet").
 
 return_statement:
 
-RETURN expression:
+RETURN expression genera el bytecode de la expresión.
 
-Genera el bytecode de la expresión.
+A nivel de VM, todavía no hay un flujo completo de CALL/RET para funciones de usuario en el compilador de PC.
 
-Aún no hay opcodes específicos de return ni de llamadas a funciones de usuario.
+4.14 Llamadas a funciones builtin y argumentos
 
-4.13. Llamadas a funciones builtin y argumentos
+builtin_func:
 
-builtin_func asocia tokens como ABS, MIN, ACCELERATE, etc. a un entero (BuiltinId).
+Asocia tokens ABS, MIN, MAX, SQRT, POW, CHECKLINELEFT, ACCELERATE, etc. a un BuiltinId entero.
 
 function_call:
 
 builtin_func LPAREN arguments RPAREN:
 
-arguments deja en la pila sus valores en orden.
+arguments genera el bytecode de cada argumento, dejando sus valores en la pila.
 
-function_call emite OP_CALL_BUILTIN con:
+Devuelve el número de argumentos.
 
-a = id de builtin,
+function_call emite:
+
+OP_CALL_BUILTIN con:
+
+a = id de la builtin (BuiltinId).
 
 d = número de argumentos.
 
-El resultado de la builtin queda en la pila.
-
 IDENTIFIER LPAREN arguments RPAREN:
 
-Verifica que exista y sea función de usuario.
+Destinado a funciones de usuario.
 
-Lanza semantic_error porque aún no están soportadas.
+Actualmente, se verifica que exista como SYM_FUNC y luego se lanza semantic_error porque aún no están soportadas en la VM.
 
-arguments y arguments_tail:
+arguments / arguments_tail:
 
-Cuentan cuántos argumentos hay:
+Cuentan el número de argumentos:
 
 expression arguments_tail → 1 + arguments_tail.
 
 vacío → 0.
 
-Ese recuento se pasa como double en in.d para OP_CALL_BUILTIN.
+El número de argumentos se pasa en in.d a OP_CALL_BUILTIN, y luego la VM sabe cuántos valores debe sacar de la pila.
 
 =========================================================
-5. MAQUINA VIRTUAL – RUN_VM
+5. MAQUINA VIRTUAL EN PC – RUN_VM (vm.c)
 
-run_vm es un intérprete de bytecode basado en pila.
+run_vm es un intérprete de bytecode basado en pila que se ejecuta en la PC para depuración.
 
-Estructuras internas:
+Estructuras:
 
-stack[1024]: pila de ejecución de double.
+double stack[1024]: pila de ejecución.
 
-sp: índice del tope de la pila (empieza en -1).
+int sp: índice del tope de la pila (inicia en -1).
 
-pc: program counter, índice de la instrucción actual en code[].
+int pc: program counter, índice de la instrucción actual en code[].
 
 Bucle principal:
 
@@ -505,157 +765,241 @@ Para cada opcode:
 
 OP_PUSH_NUM:
 
-sp++; stack[sp] = in.d; pc++;
+stack[++sp] = in.d; pc++;
 
 OP_LOAD:
 
-sp++; stack[sp] = vm_memory[in.a]; pc++;
+stack[++sp] = vm_memory[in.a]; pc++;
 
 OP_STORE:
 
-vm_memory[in.a] = stack[sp]; sp--; pc++;
+vm_memory[in.a] = stack[sp--]; pc++;
 
 OP_ADD, OP_SUB, OP_MUL, OP_DIV, OP_MOD:
 
-Sacan dos valores de la pila, operan y empujan el resultado.
+Sacan dos valores, aplican la operación y empujan el resultado.
 
-Comparaciones y lógicos:
+Comparaciones (OP_LT, OP_LTE, OP_GT, OP_GTE, OP_EQ, OP_NEQ):
 
-Sacan dos valores, comparan o combinan, y empujan 0.0 o 1.0 según resultado.
+Sacan dos valores, comparan y empujan 0.0 o 1.0.
 
-OP_NOT:
+Lógicos (OP_AND, OP_OR, OP_NOT):
 
-Saca un valor, si es “verdadero” se convierte en 0.0, si es “falso” se convierte en 1.0.
+Trabajan con 0.0/1.0 usando to_bool para normalizar.
 
 OP_JUMP:
 
-pc = in.a.
+pc = in.a;
 
 OP_JUMP_IF_FALSE:
 
 Saca cond de la pila.
 
-Si cond es falso (0.0), pc = in.a; si no, pc++.
+Si to_bool(cond) == 0.0, pc = in.a; sino pc++;.
 
 OP_CALL_BUILTIN:
 
-Lee id de builtin de in.a y argc (número de argumentos) de in.d.
+Lee id = in.a y argc = (int)in.d.
 
-Saca argc valores de la pila en orden inverso y los coloca en un arreglo args[ ].
+Saca argc argumentos de la pila en orden inverso y los almacena en args[].
 
-Ejecuta el caso correspondiente:
+Según el id, ejecuta la builtin:
 
 ABS, MIN, MAX, SQRT, POW usan funciones de math.h.
 
 CHECKLINELEFT / CHECKLINERIGHT:
 
-Imprimen un mensaje (“checkLineLeft() -> 1”) y devuelven 1.0 (simulación de sensores).
+En la VM de PC imprimen algo como checkLineLeft() -> 1 y devuelven 1.0 (simulan ver línea).
 
 ACCELERATE, SETFORWARD, SETBACKWARD, BRAKE, TURNLEFT, TURNRIGHT, TURNANGLE:
 
-Imprimen el nombre y el argumento, simulando que el carrito se mueve.
+Imprimen el nombre y parámetros, simulando los comandos al carrito:
+
+por ejemplo turnLeft(90.000000).
 
 Devuelven 0.0.
 
-Empuja el resultado res en la pila.
+Empuja res a la pila.
 
-pc++.
+pc++;.
 
 OP_POP:
 
-Comprueba que la pila no esté vacía.
+Descarta el valor del tope de la pila.
 
-sp--.
+OP_LOAD_IND:
 
-pc++.
+Saca una dirección de la pila.
 
-OP_LOAD_IND y OP_STORE_IND:
-
-LOAD_IND:
-
-Saca una dirección de la pila, la convierte a int.
-
-Comprueba que esté en rango [0, MAX_VARS).
+Comprueba rango.
 
 Empuja vm_memory[addr].
 
-STORE_IND:
+OP_STORE_IND:
 
 Saca value y addr de la pila.
 
 Comprueba rango.
 
-vm_memory[addr] = value.
+Guarda en vm_memory[addr].
 
 OP_HALT:
 
-Imprime “Ejecucion terminada”.
+Imprime Ejecucion terminada.
 
-return para salir de run_vm.
+Sale de run_vm.
+
+Esta VM de PC se usa sobre todo para:
+
+Validar que el compilador genera bytecode correcto.
+
+Ver la secuencia de llamadas a funciones builtin del carrito antes de portar a Arduino.
 
 =========================================================
 6. SAVE_BYTECODE – FORMATO DEL ARCHIVO .CHAMBA.BC
 
-Función save_bytecode(filename):
+save_bytecode(const char* filename):
 
-Abre el archivo en modo texto.
+Abre el archivo de salida.
 
-Escribe primero el número de instrucciones: code_size.
+Escribe en la primera línea el número de instrucciones:
 
-Luego, por cada instrucción i:
+code_size
 
-Escribe: op a d
+Para cada instrucción i:
 
-Cada uno separado por espacios:
+Escribe una línea con:
 
-op: entero correspondiente a OpCode.
+op a d
 
-a: entero auxiliar.
+donde:
 
-d: double en formato %.17g para no perder precisión.
+op: entero que representa el OpCode.
 
-Ejemplo de contenido:
+a: entero auxiliar (por ejemplo, dirección, id de builtin, destino de salto).
+
+d: número de punto flotante (double), típicamente usado para literales o número de argumentos.
+
+Ejemplo (simplificado):
 
 28
 0 0 5
 2 0 0
+0 0 3.14
 ...
 
-Donde 28 es el número de instrucciones y cada línea siguiente es una instrucción.
+La VM en PC y la VM en Arduino leen este mismo formato de archivo.
 
 =========================================================
-7. MAIN.C – PUNTO DE ENTRADA
+7. MAIN.C – PUNTO DE ENTRADA EN PC
 
-main:
+main(int argc, char** argv):
 
-Comprueba que el usuario pase un archivo .chamba.
+Comprueba que se haya pasado un archivo .chamba:
 
-Abre el archivo y asigna el puntero a yyin para que lexer/ parser lo lean.
+Si no, muestra un mensaje de uso y termina.
+
+Abre el archivo fuente y lo asigna a yyin para que el lexer/parser lo procesen.
 
 Llama yyparse():
 
-Si devuelve 0:
+Si yyparse() devuelve 0 (éxito):
 
-Muestra “Analisis sintactico y semantico completado exitosamente”.
+Muestra: Analisis sintactico y semantico completado exitosamente.
 
 Cierra yyin.
 
-Construye el nombre del bytecode:
+Construye el nombre del archivo de bytecode:
 
-Reemplaza extensión por .chamba.bc si había punto.
+Reemplaza la extensión por .chamba.bc si el nombre tenía punto.
 
-O añade .bc si no había punto.
+O agrega .bc si no tenía.
 
-Llama save_bytecode(bc_name).
+Llama save_bytecode(bc_name) para guardar el bytecode.
 
-Llama run_vm() para ejecutar el bytecode.
+Llama run_vm() para ejecutar el bytecode en la VM de PC.
 
 Si yyparse() falla:
 
 Cierra yyin.
 
-Imprime “Error en el analisis”.
+Imprime Error en el analisis.
 
 Devuelve 1.
 
+Este flujo es el “toolchain” de PC: compilar, generar bytecode y simular la ejecución.
+
 =========================================================
+8. MAQUINA VIRTUAL EN ARDUINO – CHAMBA CAR (RUNTIME EN HARDWARE)
+
+Además de la VM en PC, el proyecto incluye una VM adaptada a Arduino (ChambaCar.ino) con estas características:
+
+Usa la misma definición de OpCode, Instr y formato de bytecode que la VM de PC.
+
+Lee el archivo programa.chamba.bc desde una tarjeta SD.
+
+La primera línea indica code_size.
+
+Cada línea posterior se parsea como op a d y se guarda en code[i].
+
+Implementa run_vm() en Arduino:
+
+Mismo esquema de pila y pc.
+
+Interpretación de instrucciones:
+
+aritméticas, lógicas, saltos, load/store, arrays, etc.
+
+Implementa los builtins del carrito con lógica real sobre los pines:
+
+Pines de motores (L298N): IN1, IN2, IN3, IN4, ENA, ENB.
+
+Pines de sensores de línea: sensorIzqPin, sensorDerPin.
+
+En OP_CALL_BUILTIN, según el BuiltinId:
+
+CHECKLINELEFT / CHECKLINERIGHT:
+
+Llaman a hayLinea(sensorIzqPin) / hayLinea(sensorDerPin).
+
+Devuelven 1.0 si el sensor ve línea, 0.0 si no.
+
+ACCELERATE(speed):
+
+Ajusta el PWM de ambas ruedas con setPWM(speed, speed).
+
+SETFORWARD(speed):
+
+Fija el sentido hacia delante (adelante()) y aplica setPWM(speed, speed).
+
+SETBACKWARD(speed):
+
+Fija el sentido hacia atrás (atras()) y aplica setPWM(speed, speed).
+
+BRAKE():
+
+Llama a setPWM(0, 0) para detener el carrito.
+
+TURNLEFT(value):
+
+Mueve solo la rueda derecha (setPWM(0, value)) para pivotear a la izquierda.
+
+TURNRIGHT(value):
+
+Mueve solo la rueda izquierda (setPWM(value, 0)) para pivotear a la derecha.
+
+TURNANGLE(degrees):
+
+Interpreta el signo o valor del ángulo para decidir dirección y velocidad de giro (la lógica interna se puede refinar).
+
+De esta forma:
+
+El compilador y la generación de bytecode ocurren en la PC.
+
+El archivo .chamba.bc se copia a la SD.
+
+El Arduino copia ese bytecode a memoria y lo ejecuta con run_vm().
+
+Las mismas instrucciones que en PC solo imprimen logs, en Arduino se traducen en movimiento físico del carrito seguidor de línea.
+
+Con esto, ChambaScript se convierte en el “lenguaje” de alto nivel para programar el comportamiento del robot, y la máquina virtual es el puente que traduce el bytecode a acciones reales sobre el hardware.

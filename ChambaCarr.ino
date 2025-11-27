@@ -1,0 +1,457 @@
+#include <Arduino.h>
+#include <SPI.h>
+#include <SD.h>
+
+const int IN1 = 13;
+const int IN2 = 12;
+const int ENA = 6;
+const int IN3 = 11;
+const int IN4 = 10;
+const int ENB = 5;
+const int sensorIzqPin = 8;
+const int sensorDerPin = 9;
+const bool LINEA_ALTA = true;
+const int SD_CS_PIN = 4;
+
+#define MAX_CODE 512
+#define MAX_VARS 128
+
+typedef enum {
+  OP_PUSH_NUM,
+  OP_LOAD,
+  OP_STORE,
+  OP_ADD,
+  OP_SUB,
+  OP_MUL,
+  OP_DIV,
+  OP_MOD,
+  OP_LT,
+  OP_LTE,
+  OP_GT,
+  OP_GTE,
+  OP_EQ,
+  OP_NEQ,
+  OP_AND,
+  OP_OR,
+  OP_NOT,
+  OP_JUMP,
+  OP_JUMP_IF_FALSE,
+  OP_CALL_BUILTIN,
+  OP_POP,
+  OP_HALT,
+  OP_LOAD_IND,
+  OP_STORE_IND,
+  OP_CALL,
+  OP_RET
+} OpCode;
+
+typedef enum {
+  BI_ABS,
+  BI_MIN,
+  BI_MAX,
+  BI_SQRT,
+  BI_POW,
+  BI_CHECKLINELEFT,
+  BI_CHECKLINERIGHT,
+  BI_ACCELERATE,
+  BI_SETFORWARD,
+  BI_SETBACKWARD,
+  BI_BRAKE,
+  BI_TURNLEFT,
+  BI_TURNRIGHT,
+  BI_TURNANGLE
+} BuiltinId;
+
+typedef struct {
+  OpCode op;
+  int a;
+  double d;
+} Instr;
+
+Instr code[MAX_CODE];
+int code_size = 0;
+double vm_memory[MAX_VARS];
+int entry_pc = 0;
+
+bool programLoaded = false;
+bool executed = false;
+
+static double to_bool(double v) {
+  if (v != 0.0) return 1.0;
+  return 0.0;
+}
+
+int clampPWM(int v) {
+  if (v < 0) v = 0;
+  if (v > 255) v = 255;
+  return v;
+}
+
+bool hayLinea(int pin) {
+  int v = digitalRead(pin);
+  if (LINEA_ALTA) {
+    return v == HIGH;
+  } else {
+    return v == LOW;
+  }
+}
+
+void adelante() {
+  digitalWrite(IN1, LOW);
+  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, LOW);
+  digitalWrite(IN4, HIGH);
+}
+
+void atras() {
+  digitalWrite(IN1, HIGH);
+  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, HIGH);
+  digitalWrite(IN4, LOW);
+}
+
+void setPWM(int pwmIzq, int pwmDer) {
+  pwmIzq = clampPWM(pwmIzq);
+  pwmDer = clampPWM(pwmDer);
+  analogWrite(ENA, pwmIzq);
+  analogWrite(ENB, pwmDer);
+}
+
+void run_vm() {
+  double stack[128];
+  int sp = -1;
+  int pc = entry_pc;
+  int call_stack[64];
+  int call_sp = 0;
+
+  for (;;) {
+    Instr in = code[pc];
+    switch (in.op) {
+    case OP_PUSH_NUM:
+      sp++;
+      stack[sp] = in.d;
+      pc++;
+      break;
+    case OP_LOAD:
+      sp++;
+      stack[sp] = vm_memory[in.a];
+      pc++;
+      break;
+    case OP_STORE:
+      vm_memory[in.a] = stack[sp];
+      sp--;
+      pc++;
+      break;
+    case OP_ADD: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = a + b;
+      pc++;
+      break;
+    }
+    case OP_SUB: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = a - b;
+      pc++;
+      break;
+    }
+    case OP_MUL: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = a * b;
+      pc++;
+      break;
+    }
+    case OP_DIV: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = a / b;
+      pc++;
+      break;
+    }
+    case OP_MOD: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = fmod(a, b);
+      pc++;
+      break;
+    }
+    case OP_LT: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a < b);
+      pc++;
+      break;
+    }
+    case OP_LTE: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a <= b);
+      pc++;
+      break;
+    }
+    case OP_GT: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a > b);
+      pc++;
+      break;
+    }
+    case OP_GTE: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a >= b);
+      pc++;
+      break;
+    }
+    case OP_EQ: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a == b);
+      pc++;
+      break;
+    }
+    case OP_NEQ: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a != b);
+      pc++;
+      break;
+    }
+    case OP_AND: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(to_bool(a) && to_bool(b));
+      pc++;
+      break;
+    }
+    case OP_OR: {
+      double b = stack[sp--];
+      double a = stack[sp--];
+      stack[++sp] = to_bool(to_bool(a) || to_bool(b));
+      pc++;
+      break;
+    }
+    case OP_NOT: {
+      double a = stack[sp--];
+      stack[++sp] = to_bool(a) ? 0.0 : 1.0;
+      pc++;
+      break;
+    }
+    case OP_JUMP:
+      pc = in.a;
+      break;
+    case OP_JUMP_IF_FALSE: {
+      double cond = stack[sp--];
+      if (to_bool(cond) == 0.0) {
+        pc = in.a;
+      } else {
+        pc++;
+      }
+      break;
+    }
+    case OP_CALL_BUILTIN: {
+      int id = in.a;
+      int argc = (int)in.d;
+      double args[8];
+      int i;
+      for (i = argc - 1; i >= 0; --i) {
+        args[i] = stack[sp--];
+      }
+      double res = 0.0;
+      switch (id) {
+      case BI_ABS:
+        if (argc >= 1) res = fabs(args[0]);
+        break;
+      case BI_MIN:
+        if (argc >= 2) res = args[0] < args[1] ? args[0] : args[1];
+        break;
+      case BI_MAX:
+        if (argc >= 2) res = args[0] > args[1] ? args[0] : args[1];
+        break;
+      case BI_SQRT:
+        if (argc >= 1) res = sqrt(args[0]);
+        break;
+      case BI_POW:
+        if (argc >= 2) res = pow(args[0], args[1]);
+        break;
+      case BI_CHECKLINELEFT: {
+        bool v = hayLinea(sensorIzqPin);
+        res = v ? 1.0 : 0.0;
+        break;
+      }
+      case BI_CHECKLINERIGHT: {
+        bool v = hayLinea(sensorDerPin);
+        res = v ? 1.0 : 0.0;
+        break;
+      }
+      case BI_ACCELERATE:
+        if (argc >= 1) {
+          int s = clampPWM((int)args[0]);
+          setPWM(s, s);
+        }
+        res = 0.0;
+        break;
+      case BI_SETFORWARD:
+        if (argc >= 1) {
+          int s = clampPWM((int)args[0]);
+          adelante();
+          setPWM(s, s);
+        }
+        res = 0.0;
+        break;
+      case BI_SETBACKWARD:
+        if (argc >= 1) {
+          int s = clampPWM((int)args[0]);
+          atras();
+          setPWM(s, s);
+        }
+        res = 0.0;
+        break;
+      case BI_BRAKE:
+        setPWM(0, 0);
+        res = 0.0;
+        break;
+      case BI_TURNLEFT:
+        if (argc >= 1) {
+          int s = clampPWM((int)args[0]);
+          setPWM(0, s);
+        }
+        res = 0.0;
+        break;
+      case BI_TURNRIGHT:
+        if (argc >= 1) {
+          int s = clampPWM((int)args[0]);
+          setPWM(s, 0);
+        }
+        res = 0.0;
+        break;
+      case BI_TURNANGLE:
+        if (argc >= 1) {
+          int s = clampPWM(180);
+          if (args[0] > 0) {
+            setPWM(0, s);
+          } else {
+            setPWM(s, 0);
+          }
+        }
+        res = 0.0;
+        break;
+      default:
+        res = 0.0;
+        break;
+      }
+      stack[++sp] = res;
+      pc++;
+      break;
+    }
+    case OP_POP:
+      if (sp < 0) {
+        return;
+      }
+      sp--;
+      pc++;
+      break;
+    case OP_LOAD_IND: {
+      double addr = stack[sp--];
+      int i = (int)addr;
+      if (i < 0 || i >= MAX_VARS) {
+        return;
+      }
+      stack[++sp] = vm_memory[i];
+      pc++;
+      break;
+    }
+    case OP_STORE_IND: {
+      double value = stack[sp--];
+      double addr = stack[sp--];
+      int i = (int)addr;
+      if (i < 0 || i >= MAX_VARS) {
+        return;
+      }
+      vm_memory[i] = value;
+      pc++;
+      break;
+    }
+    case OP_CALL:
+      if (call_sp >= 64) {
+        return;
+      }
+      call_stack[call_sp++] = pc + 1;
+      pc = in.a;
+      break;
+    case OP_RET:
+      if (call_sp <= 0) {
+        return;
+      }
+      pc = call_stack[--call_sp];
+      break;
+    case OP_HALT:
+      return;
+    default:
+      return;
+    }
+  }
+}
+
+bool loadBytecode(const char* filename) {
+  File f = SD.open(filename, FILE_READ);
+  if (!f) {
+    return false;
+  }
+  String line = f.readStringUntil('\n');
+  line.trim();
+  int n = line.toInt();
+  if (n <= 0 || n > MAX_CODE) {
+    f.close();
+    return false;
+  }
+  code_size = n;
+  for (int i = 0; i < n; i++) {
+    String l = f.readStringUntil('\n');
+    l.trim();
+    if (l.length() == 0) {
+      f.close();
+      return false;
+    }
+    int op, a;
+    double d;
+    const char* cstr = l.c_str();
+    if (sscanf(cstr, "%d %d %lf", &op, &a, &d) != 3) {
+      f.close();
+      return false;
+    }
+    code[i].op = (OpCode)op;
+    code[i].a = a;
+    code[i].d = d;
+  }
+  f.close();
+  entry_pc = 0;
+  return true;
+}
+
+void setup() {
+  pinMode(IN1, OUTPUT);
+  pinMode(IN2, OUTPUT);
+  pinMode(IN3, OUTPUT);
+  pinMode(IN4, OUTPUT);
+  pinMode(ENA, OUTPUT);
+  pinMode(ENB, OUTPUT);
+  pinMode(sensorIzqPin, INPUT);
+  pinMode(sensorDerPin, INPUT);
+  Serial.begin(9600);
+  SD.begin(SD_CS_PIN);
+  if (loadBytecode("programa.chamba.bc")) {
+    programLoaded = true;
+  } else {
+    programLoaded = false;
+  }
+}
+
+void loop() {
+  if (programLoaded && !executed) {
+    run_vm();
+    executed = true;
+  }
+}
