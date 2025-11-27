@@ -1,8 +1,6 @@
 #ifndef VM_H
 #define VM_H
 
-#include <stdio.h>
-
 #define MAX_VARS 1024
 #define MAX_CODE 4096
 
@@ -30,7 +28,9 @@ typedef enum {
     OP_POP,
     OP_HALT,
     OP_LOAD_IND,
-    OP_STORE_IND
+    OP_STORE_IND,
+    OP_CALL,
+    OP_RET
 } OpCode;
 
 typedef struct {
@@ -42,6 +42,7 @@ typedef struct {
 extern Instr code[MAX_CODE];
 extern int code_size;
 extern double vm_memory[MAX_VARS];
+extern int entry_pc;
 
 typedef enum {
     BI_ABS,

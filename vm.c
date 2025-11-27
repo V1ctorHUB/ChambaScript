@@ -6,6 +6,7 @@
 Instr code[MAX_CODE];
 int code_size = 0;
 double vm_memory[MAX_VARS];
+int entry_pc = 0;
 
 static double to_bool(double v) {
     if (v != 0.0) return 1.0;
@@ -26,7 +27,9 @@ int emit(OpCode op, int a, double d) {
 void run_vm(void) {
     double stack[1024];
     int sp = -1;
-    int pc = 0;
+    int pc = entry_pc;
+    int call_stack[256];
+    int call_sp = 0;
 
     for (;;) {
         Instr in = code[pc];
@@ -267,6 +270,20 @@ void run_vm(void) {
             pc++;
             break;
         }
+        case OP_CALL:
+            if (call_sp >= 256) {
+                fprintf(stderr, "Runtime error: call stack overflow\n");
+                exit(1);
+            }
+            call_stack[call_sp++] = pc + 1;
+            pc = in.a;
+            break;
+        case OP_RET:
+            if (call_sp <= 0) {
+                return;
+            }
+            pc = call_stack[--call_sp];
+            break;
         case OP_HALT:
             printf("Ejecucion terminada\n");
             return;

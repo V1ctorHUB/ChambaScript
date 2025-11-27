@@ -28,6 +28,9 @@ static Sym* sym_table[SYM_TABLE_SIZE];
 static int current_scope = 0;
 static int next_addr = 0;
 
+static int current_param_addrs[64];
+static int current_param_count = 0;
+
 static unsigned sym_hash(const char* s) {
     unsigned h = 5381u;
     unsigned char c;
@@ -434,9 +437,28 @@ boolean_expression:
     ;
 
 function_declaration:
-      FUNC IDENTIFIER LPAREN parameters RPAREN COLON var_type LBRACE statement_list RBRACE
+      FUNC IDENTIFIER
         {
-            semantic_error("user-defined functions not supported in VM yet");
+            if (sym_lookup_local($2)) {
+                semantic_error("function %s already declared", $2);
+            }
+            Sym* f = sym_insert($2, SYM_FUNC, TYPE_VOID, 0);
+            f->addr = code_size;
+            if (strcmp($2, "main") == 0) {
+                entry_pc = code_size;
+            }
+            current_param_count = 0;
+        }
+      LPAREN parameters RPAREN COLON var_type LBRACE
+        {
+            int i;
+            for (i = current_param_count - 1; i >= 0; --i) {
+                emit(OP_STORE, current_param_addrs[i], 0.0);
+            }
+        }
+      statement_list RBRACE
+        {
+            emit(OP_RET, 0, 0.0);
         }
     ;
 
@@ -452,10 +474,23 @@ parameter_tail:
 
 parameter:
       IDENTIFIER COLON var_type
+        {
+            if (sym_lookup_local($1)) {
+                semantic_error("parameter %s already declared", $1);
+            }
+            Sym* p = sym_insert($1, SYM_VAR, $3, 1);
+            if (current_param_count >= 64) {
+                semantic_error("too many parameters");
+            }
+            current_param_addrs[current_param_count++] = p->addr;
+        }
     ;
 
 return_statement:
       RETURN expression
+        {
+            emit(OP_RET, 0, 0.0);
+        }
     ;
 
 builtin_func:
@@ -486,7 +521,7 @@ function_call:
             if (!s || s->kind != SYM_FUNC) {
                 semantic_error("call to undeclared function %s", $1);
             }
-            semantic_error("user-defined function calls not supported in VM yet");
+            emit(OP_CALL, s->addr, 0.0);
         }
     ;
 

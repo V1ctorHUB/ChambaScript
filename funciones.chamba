@@ -1,0 +1,6 @@
+func marito(): void {
+    var x: int = 5;
+    var y: int = 3;
+    var z: int = x + y;
+    accelerate(z);
+};

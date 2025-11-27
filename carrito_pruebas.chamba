@@ -1,0 +1,41 @@
+func main(): void {
+    var base: float = 200;
+    var slow: float = 120;
+    var fast: float = 255;
+    var i: int = 0;
+
+    setForward(base);
+    accelerate(fast);
+
+    while (i < 3) {
+        var left: bool = checkLineLeft();
+        var right: bool = checkLineRight();
+
+        if (left && !right) {
+            turnLeft(45);
+        } else {
+            if (!left && right) {
+                turnRight(45);
+            } else {
+                brake();
+            };
+        };
+
+        i = i + 1;
+    };
+
+    setBackward(slow);
+    turnAngle(90);
+    brake();
+
+    var l: bool = checkLineLeft();
+    var r: bool = checkLineRight();
+
+    accelerate(100);
+    setForward(150);
+    setBackward(150);
+    brake();
+    turnLeft(30);
+    turnRight(30);
+    turnAngle(60);
+};

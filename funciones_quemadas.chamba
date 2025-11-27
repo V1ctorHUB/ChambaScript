@@ -1,0 +1,16 @@
+func main(): void {
+    var a: float = -3.5;
+    var b: float = 2.0;
+    var c: float;
+    var d: float;
+    c = abs(a);
+    accelerate(c);
+    d = min(a, b);
+    accelerate(d);
+    d = max(a, b);
+    accelerate(d);
+    c = sqrt(9);
+    accelerate(c);
+    d = pow(2, 3);
+    accelerate(d);
+};
