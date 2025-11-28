@@ -1,6 +1,6 @@
 var speed           : int = 150;
-var ticksPerSecond  : int = 60;
-var seconds         : int = 3;
+var ticksPerSecond  : int = 1000;
+var seconds         : int = 10000;
 var ticks           : int = 0;
 var targetTicks     : int = 0;
 

@@ -97,7 +97,7 @@ void atras() {
 void setPWM(int pwmIzq, int pwmDer) {
   currentPwmLeft  = clampPWM(pwmIzq);
   currentPwmRight = clampPWM(pwmDer);
-  analogWrite(ENA, currentPwmLeft);
+  analogWrite(ENA, currentPwmLeft*0.85f);
   analogWrite(ENB, currentPwmRight);
 }
 
