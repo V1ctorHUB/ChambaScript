@@ -6,16 +6,19 @@
 const int IN1 = 7;
 const int IN2 = 4;
 const int ENA = 6;
+
 const int IN3 = 3;
 const int IN4 = 2;
 const int ENB = 5;
+
 const int sensorIzqPin = 9;
 const int sensorDerPin = 8;
+
 const bool LINEA_ALTA = true;
 const int SD_CS_PIN = 10;
 
 #define MAX_CODE 84
-#define MAX_VARS 40
+#define MAX_VARS 48
 
 typedef enum {
   OP_PUSH_NUM,
@@ -441,12 +444,20 @@ void setup() {
   pinMode(ENB, OUTPUT);
   pinMode(sensorIzqPin, INPUT);
   pinMode(sensorDerPin, INPUT);
+
   Serial.begin(9600);
-  SD.begin(SD_CS_PIN);
+
+  if (!SD.begin(SD_CS_PIN)) {
+    Serial.println("SD ERROR: no se pudo inicializar la tarjeta");
+    programLoaded = false;
+    return;
+  }
 
   if (loadBytecode("programa.chamba.bc")) {
+    Serial.println("Bytecode cargado correctamente");
     programLoaded = true;
   } else {
+    Serial.println("ERROR: no se pudo cargar programa.chamba.bc");
     programLoaded = false;
   }
 }
