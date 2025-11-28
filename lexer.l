@@ -51,6 +51,8 @@ ID      {LETTER}({LETTER}|{DIGIT})*
 "turnLeft"       { return TURNLEFT; }
 "turnRight"      { return TURNRIGHT; }
 "turnAngle"      { return TURNANGLE; }
+"accelerateLeft"  { return ACCELERATELEFT; }
+"accelerateRight" { return ACCELERATERIGHT; }
 
 "=="        { return EQ; }
 "!="        { return NEQ; }
@@ -101,3 +103,4 @@ ID      {LETTER}({LETTER}|{DIGIT})*
 .           { fprintf(stderr, "Caracter no reconocido: %s\n", yytext); }
 
 %%
+

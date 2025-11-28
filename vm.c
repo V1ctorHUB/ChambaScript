@@ -231,6 +231,21 @@ void run_vm(void) {
                 }
                 res = 0.0;
                 break;
+
+            case BI_ACCELERATELEFT:
+                if (argc >= 1) {
+                    printf("accelerateLeft(%f)\n", args[0]);
+                }
+                res = 0.0;
+                break;
+
+            case BI_ACCELERATERIGHT:
+                if (argc >= 1) {
+                    printf("accelerateRight(%f)\n", args[0]);
+                }
+                res = 0.0;
+                break;
+
             default:
                 res = 0.0;
                 break;

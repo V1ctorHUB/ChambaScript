@@ -1,0 +1,6 @@
+func main():void {
+    setForward(120);
+    accelerateLeft(150);
+    accelerateRight(150);
+    brake();
+};

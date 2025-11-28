@@ -56,51 +56,53 @@
      TURNLEFT = 272,
      TURNRIGHT = 273,
      TURNANGLE = 274,
-     VAR = 275,
-     CONST = 276,
-     FUNC = 277,
-     RETURN = 278,
-     IF = 279,
-     ELSE = 280,
-     WHILE = 281,
-     DO = 282,
-     FOR = 283,
-     BREAK = 284,
-     CONTINUE = 285,
-     PASS = 286,
-     TYPE_INT = 287,
-     TYPE_TINY = 288,
-     TYPE_LONG = 289,
-     TYPE_FLOAT = 290,
-     TYPE_CHAR = 291,
-     TYPE_BOOL = 292,
-     TYPE_VOID = 293,
-     TRUE = 294,
-     FALSE = 295,
-     PLUS = 296,
-     MINUS = 297,
-     MULTIPLY = 298,
-     DIVIDE = 299,
-     MODULO = 300,
-     EQ = 301,
-     NEQ = 302,
-     LT = 303,
-     LTE = 304,
-     GT = 305,
-     GTE = 306,
-     AND = 307,
-     OR = 308,
-     NOT = 309,
-     ASSIGN = 310,
-     LPAREN = 311,
-     RPAREN = 312,
-     LBRACE = 313,
-     RBRACE = 314,
-     LBRACKET = 315,
-     RBRACKET = 316,
-     SEMICOLON = 317,
-     COLON = 318,
-     COMMA = 319
+     ACCELERATELEFT = 275,
+     ACCELERATERIGHT = 276,
+     VAR = 277,
+     CONST = 278,
+     FUNC = 279,
+     RETURN = 280,
+     IF = 281,
+     ELSE = 282,
+     WHILE = 283,
+     DO = 284,
+     FOR = 285,
+     BREAK = 286,
+     CONTINUE = 287,
+     PASS = 288,
+     TYPE_INT = 289,
+     TYPE_TINY = 290,
+     TYPE_LONG = 291,
+     TYPE_FLOAT = 292,
+     TYPE_CHAR = 293,
+     TYPE_BOOL = 294,
+     TYPE_VOID = 295,
+     TRUE = 296,
+     FALSE = 297,
+     PLUS = 298,
+     MINUS = 299,
+     MULTIPLY = 300,
+     DIVIDE = 301,
+     MODULO = 302,
+     EQ = 303,
+     NEQ = 304,
+     LT = 305,
+     LTE = 306,
+     GT = 307,
+     GTE = 308,
+     AND = 309,
+     OR = 310,
+     NOT = 311,
+     ASSIGN = 312,
+     LPAREN = 313,
+     RPAREN = 314,
+     LBRACE = 315,
+     RBRACE = 316,
+     LBRACKET = 317,
+     RBRACKET = 318,
+     SEMICOLON = 319,
+     COLON = 320,
+     COMMA = 321
    };
 #endif
 /* Tokens.  */
@@ -121,51 +123,53 @@
 #define TURNLEFT 272
 #define TURNRIGHT 273
 #define TURNANGLE 274
-#define VAR 275
-#define CONST 276
-#define FUNC 277
-#define RETURN 278
-#define IF 279
-#define ELSE 280
-#define WHILE 281
-#define DO 282
-#define FOR 283
-#define BREAK 284
-#define CONTINUE 285
-#define PASS 286
-#define TYPE_INT 287
-#define TYPE_TINY 288
-#define TYPE_LONG 289
-#define TYPE_FLOAT 290
-#define TYPE_CHAR 291
-#define TYPE_BOOL 292
-#define TYPE_VOID 293
-#define TRUE 294
-#define FALSE 295
-#define PLUS 296
-#define MINUS 297
-#define MULTIPLY 298
-#define DIVIDE 299
-#define MODULO 300
-#define EQ 301
-#define NEQ 302
-#define LT 303
-#define LTE 304
-#define GT 305
-#define GTE 306
-#define AND 307
-#define OR 308
-#define NOT 309
-#define ASSIGN 310
-#define LPAREN 311
-#define RPAREN 312
-#define LBRACE 313
-#define RBRACE 314
-#define LBRACKET 315
-#define RBRACKET 316
-#define SEMICOLON 317
-#define COLON 318
-#define COMMA 319
+#define ACCELERATELEFT 275
+#define ACCELERATERIGHT 276
+#define VAR 277
+#define CONST 278
+#define FUNC 279
+#define RETURN 280
+#define IF 281
+#define ELSE 282
+#define WHILE 283
+#define DO 284
+#define FOR 285
+#define BREAK 286
+#define CONTINUE 287
+#define PASS 288
+#define TYPE_INT 289
+#define TYPE_TINY 290
+#define TYPE_LONG 291
+#define TYPE_FLOAT 292
+#define TYPE_CHAR 293
+#define TYPE_BOOL 294
+#define TYPE_VOID 295
+#define TRUE 296
+#define FALSE 297
+#define PLUS 298
+#define MINUS 299
+#define MULTIPLY 300
+#define DIVIDE 301
+#define MODULO 302
+#define EQ 303
+#define NEQ 304
+#define LT 305
+#define LTE 306
+#define GT 307
+#define GTE 308
+#define AND 309
+#define OR 310
+#define NOT 311
+#define ASSIGN 312
+#define LPAREN 313
+#define RPAREN 314
+#define LBRACE 315
+#define RBRACE 316
+#define LBRACKET 317
+#define RBRACKET 318
+#define SEMICOLON 319
+#define COLON 320
+#define COMMA 321
 
 
 
@@ -179,7 +183,7 @@ typedef union YYSTYPE
     char* string_val;
 }
 /* Line 1529 of yacc.c.  */
-#line 183 "parser.tab.h"
+#line 187 "parser.tab.h"
 	YYSTYPE;
 # define yystype YYSTYPE /* obsolescent; will be withdrawn */
 # define YYSTYPE_IS_DECLARED 1
