@@ -3,9 +3,6 @@
 #include <SD.h>
 #include <math.h>
 
-// ===========================
-// Pines para el MEGA
-// ===========================
 // Motores
 const int IN1 = 7;
 const int IN2 = 4;
@@ -19,13 +16,11 @@ const int ENB = 5;
 const int sensorIzqPin = 9;
 const int sensorDerPin = 8;
 
-// SD en Arduino MEGA
-// SPI hardware: MISO=50, MOSI=51, SCK=52
-// CS en el pin 53 (SS del MEGA)
 const bool LINEA_ALTA = true;
+
+// SD en Arduino MEGA (SPI: MISO=50, MOSI=51, SCK=52)
 const int SD_CS_PIN = 53;
 
-// Límites de la VM
 #define MAX_CODE 128
 #define MAX_VARS 64
 
@@ -89,7 +84,7 @@ int entry_pc = 0;
 bool programLoaded = false;
 bool executed = false;
 
-// === NUEVO: file global estilo ejemplo SD ===
+// archivo global para la SD
 File myFile;
 
 static float to_bool(float v) {
@@ -394,9 +389,7 @@ void run_vm() {
     }
 
     case OP_POP:
-      if (sp < 0) {
-        return;
-      }
+      if (sp < 0) return;
       sp--;
       pc++;
       break;
@@ -404,9 +397,7 @@ void run_vm() {
     case OP_LOAD_IND: {
       float addr = stack[sp--];
       int i = (int)addr;
-      if (i < 0 || i >= MAX_VARS) {
-        return;
-      }
+      if (i < 0 || i >= MAX_VARS) return;
       stack[++sp] = vm_memory[i];
       pc++;
       break;
@@ -416,26 +407,20 @@ void run_vm() {
       float value = stack[sp--];
       float addr = stack[sp--];
       int i = (int)addr;
-      if (i < 0 || i >= MAX_VARS) {
-        return;
-      }
+      if (i < 0 || i >= MAX_VARS) return;
       vm_memory[i] = value;
       pc++;
       break;
     }
 
     case OP_CALL:
-      if (call_sp >= 16) {
-        return;
-      }
+      if (call_sp >= 16) return;
       call_stack[call_sp++] = pc + 1;
       pc = in.a;
       break;
 
     case OP_RET:
-      if (call_sp <= 0) {
-        return;
-      }
+      if (call_sp <= 0) return;
       pc = call_stack[--call_sp];
       break;
 
@@ -448,26 +433,18 @@ void run_vm() {
   }
 }
 
-// === AQUÍ CAMBIAMOS LA FORMA DE LEER ARCHIVOS, ESTILO EJEMPLO SD ===
+// PARSER NUEVO: sin sscanf, usando String
 bool loadBytecode(const char* filename) {
-  // Abrimos el archivo como en el ejemplo (usando myFile global)
   myFile = SD.open(filename, FILE_READ);
   if (!myFile) {
-    Serial.print("error opening ");
-    Serial.println(filename);
     return false;
   }
 
-  // Primera línea: número de instrucciones
   String line = myFile.readStringUntil('\n');
   line.trim();
   int n = line.toInt();
 
-  Serial.print("Line count read: ");
-  Serial.println(n);
-
   if (n <= 0 || n > MAX_CODE) {
-    Serial.println("ERROR: tamaño de código inválido");
     myFile.close();
     return false;
   }
@@ -476,7 +453,6 @@ bool loadBytecode(const char* filename) {
 
   for (int i = 0; i < n; i++) {
     if (!myFile.available()) {
-      Serial.println("ERROR: fin de archivo antes de leer todas las instrucciones");
       myFile.close();
       return false;
     }
@@ -484,27 +460,33 @@ bool loadBytecode(const char* filename) {
     String l = myFile.readStringUntil('\n');
     l.trim();
     if (l.length() == 0) {
-      Serial.print("ERROR: línea vacía en bytecode en índice ");
-      Serial.println(i);
       myFile.close();
       return false;
     }
 
-    int op, a;
-    float d;
-    const char* cstr = l.c_str();
-    if (sscanf(cstr, "%d %d %f", &op, &a, &d) != 3) {
-      Serial.print("ERROR parseando línea ");
-      Serial.println(i);
-      Serial.print("Contenido: ");
-      Serial.println(l);
+    int opInt = 0;
+    int aInt  = 0;
+    float dVal = 0.0f;
+
+    int firstSpace  = l.indexOf(' ');
+    int secondSpace = l.indexOf(' ', firstSpace + 1);
+
+    if (firstSpace <= 0 || secondSpace <= firstSpace) {
       myFile.close();
       return false;
     }
 
-    code[i].op = (OpCode)op;
-    code[i].a  = a;
-    code[i].d  = d;
+    String sOp = l.substring(0, firstSpace);
+    String sA  = l.substring(firstSpace + 1, secondSpace);
+    String sD  = l.substring(secondSpace + 1);
+
+    opInt = sOp.toInt();
+    aInt  = sA.toInt();
+    dVal  = sD.toFloat();
+
+    code[i].op = (OpCode)opInt;
+    code[i].a  = aInt;
+    code[i].d  = dVal;
   }
 
   myFile.close();
@@ -523,30 +505,17 @@ void setup() {
   pinMode(sensorDerPin, INPUT);
 
   Serial.begin(9600);
-  while (!Serial) {
-    ; // espera monitor serie, como en el ejemplo
-  }
-
-  Serial.print("Initializing SD card...");
+  while (!Serial) {;}
 
   if (!SD.begin(SD_CS_PIN)) {
-    Serial.println("initialization failed. Things to check:");
-    Serial.println("1. is a card inserted?");
-    Serial.println("2. is your wiring correct?");
-    Serial.println("3. did you change the chipSelect pin to match your shield or module?");
-    Serial.println("Note: press reset button on the board and reopen this Serial Monitor after fixing your issue!");
-    // Igual que el ejemplo: se queda bloqueado
-    while (true);
+    programLoaded = false;
+    while (true) {;}
   }
 
-  Serial.println("initialization done.");
-  Serial.println("Intentando cargar chamba.txt...");
-
-  if (loadBytecode("chamba.txt")) {
-    Serial.println("Bytecode cargado correctamente");
+  // ahora el archivo se llama "TEST"
+  if (loadBytecode("TEST")) {
     programLoaded = true;
   } else {
-    Serial.println("ERROR: no se pudo cargar chamba.txt");
     programLoaded = false;
   }
 }
