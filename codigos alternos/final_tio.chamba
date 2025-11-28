@@ -2,25 +2,37 @@ var speed          : int;
 var ticksPerSecond : int;
 var ticks          : int;
 var targetTicks    : int;
-var times : int;
-ticks = 0;
-times = 0;
+var nextSwitch     : int;
+var side           : int;
+
 speed = 200;
-ticksPerSecond = 500;
-targetTicks = 10000;
+ticksPerSecond = 1500;
+ticks = 0;
+targetTicks = 12000;
+nextSwitch = ticksPerSecond;
+side = 0;
 
 setForward(speed);
-// Prueba no matar el otro motor
+
 while (ticks < targetTicks) {
-    if (ticks < ticksPerSecond*times) {
-        accelerateRight(speed/2);
+    if (side == 0) {
+        accelerateRight(speed-50);
         accelerateLeft(speed);
-        times= times + 1;
     } else {
-        accelerateLeft(speed/2);
-        accelerateRight(speed);
+        accelerateLeft(speed / 2 -20);
+        accelerateRight(speed+50);
     };
+
     ticks = ticks + 1;
+
+    if (ticks >= nextSwitch) {
+        if (side == 0) {
+            side = 1;
+        } else {
+            side = 0;
+        };
+        nextSwitch = nextSwitch + ticksPerSecond;
+    }else{pass;};
 };
 
 brake();

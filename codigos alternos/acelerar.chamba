@@ -3,6 +3,6 @@
 setForward(400);
 
 while (true) {
-    accelerateLeft(130);
+    accelerateLeft(120);
     accelerateRight(250);
 };
