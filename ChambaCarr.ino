@@ -3,6 +3,10 @@
 #include <SD.h>
 #include <math.h>
 
+// ===========================
+// Pines para el MEGA
+// ===========================
+// Motores
 const int IN1 = 7;
 const int IN2 = 4;
 const int ENA = 6;
@@ -11,14 +15,19 @@ const int IN3 = 3;
 const int IN4 = 2;
 const int ENB = 5;
 
+// Sensores de línea
 const int sensorIzqPin = 9;
 const int sensorDerPin = 8;
 
+// SD en Arduino MEGA
+// SPI hardware: MISO=50, MOSI=51, SCK=52
+// CS lo ponemos en el pin 53 (SS del MEGA)
 const bool LINEA_ALTA = true;
-const int SD_CS_PIN = 10;
+const int SD_CS_PIN = 53;   // <--- ajusta este si tu módulo usa otro CS
 
-#define MAX_CODE 84
-#define MAX_VARS 48
+// Puedes subir un poco estos valores, el MEGA tiene 8KB de RAM
+#define MAX_CODE 128
+#define MAX_VARS 64
 
 typedef enum {
   OP_PUSH_NUM,
@@ -136,16 +145,19 @@ void run_vm() {
       stack[sp] = in.d;
       pc++;
       break;
+
     case OP_LOAD:
       sp++;
       stack[sp] = vm_memory[in.a];
       pc++;
       break;
+
     case OP_STORE:
       vm_memory[in.a] = stack[sp];
       sp--;
       pc++;
       break;
+
     case OP_ADD: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -153,6 +165,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_SUB: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -160,6 +173,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_MUL: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -167,6 +181,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_DIV: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -174,6 +189,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_MOD: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -181,6 +197,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_LT: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -188,6 +205,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_LTE: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -195,6 +213,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_GT: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -202,6 +221,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_GTE: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -209,6 +229,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_EQ: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -216,6 +237,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_NEQ: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -223,6 +245,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_AND: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -230,6 +253,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_OR: {
       float b = stack[sp--];
       float a = stack[sp--];
@@ -237,15 +261,18 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_NOT: {
       float a = stack[sp--];
       stack[++sp] = to_bool(a) ? 0.0f : 1.0f;
       pc++;
       break;
     }
+
     case OP_JUMP:
       pc = in.a;
       break;
+
     case OP_JUMP_IF_FALSE: {
       float cond = stack[sp--];
       if (to_bool(cond) == 0.0f) {
@@ -255,6 +282,7 @@ void run_vm() {
       }
       break;
     }
+
     case OP_CALL_BUILTIN: {
       int id = in.a;
       int argc = (int)in.d;
@@ -264,15 +292,16 @@ void run_vm() {
         args[i] = stack[sp--];
       }
       float res = 0.0f;
+
       switch (id) {
       case BI_ABS:
         if (argc >= 1) res = fabs(args[0]);
         break;
       case BI_MIN:
-        if (argc >= 2) res = args[0] < args[1] ? args[0] : args[1];
+        if (argc >= 2) res = (args[0] < args[1]) ? args[0] : args[1];
         break;
       case BI_MAX:
-        if (argc >= 2) res = args[0] > args[1] ? args[0] : args[1];
+        if (argc >= 2) res = (args[0] > args[1]) ? args[0] : args[1];
         break;
       case BI_SQRT:
         if (argc >= 1) res = sqrt(args[0]);
@@ -280,6 +309,7 @@ void run_vm() {
       case BI_POW:
         if (argc >= 2) res = pow(args[0], args[1]);
         break;
+
       case BI_CHECKLINELEFT: {
         bool v = hayLinea(sensorIzqPin);
         res = v ? 1.0f : 0.0f;
@@ -290,6 +320,7 @@ void run_vm() {
         res = v ? 1.0f : 0.0f;
         break;
       }
+
       case BI_ACCELERATE:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
@@ -297,6 +328,7 @@ void run_vm() {
         }
         res = 0.0f;
         break;
+
       case BI_SETFORWARD:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
@@ -305,6 +337,7 @@ void run_vm() {
         }
         res = 0.0f;
         break;
+
       case BI_SETBACKWARD:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
@@ -313,10 +346,12 @@ void run_vm() {
         }
         res = 0.0f;
         break;
+
       case BI_BRAKE:
         setPWM(0, 0);
         res = 0.0f;
         break;
+
       case BI_TURNLEFT:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
@@ -324,6 +359,7 @@ void run_vm() {
         }
         res = 0.0f;
         break;
+
       case BI_TURNRIGHT:
         if (argc >= 1) {
           int s = clampPWM((int)args[0]);
@@ -331,6 +367,7 @@ void run_vm() {
         }
         res = 0.0f;
         break;
+
       case BI_TURNANGLE:
         if (argc >= 1) {
           int s = clampPWM(180);
@@ -342,14 +379,17 @@ void run_vm() {
         }
         res = 0.0f;
         break;
+
       default:
         res = 0.0f;
         break;
       }
+
       stack[++sp] = res;
       pc++;
       break;
     }
+
     case OP_POP:
       if (sp < 0) {
         return;
@@ -357,6 +397,7 @@ void run_vm() {
       sp--;
       pc++;
       break;
+
     case OP_LOAD_IND: {
       float addr = stack[sp--];
       int i = (int)addr;
@@ -367,6 +408,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_STORE_IND: {
       float value = stack[sp--];
       float addr = stack[sp--];
@@ -378,6 +420,7 @@ void run_vm() {
       pc++;
       break;
     }
+
     case OP_CALL:
       if (call_sp >= 16) {
         return;
@@ -385,14 +428,17 @@ void run_vm() {
       call_stack[call_sp++] = pc + 1;
       pc = in.a;
       break;
+
     case OP_RET:
       if (call_sp <= 0) {
         return;
       }
       pc = call_stack[--call_sp];
       break;
+
     case OP_HALT:
       return;
+
     default:
       return;
     }
@@ -402,20 +448,25 @@ void run_vm() {
 bool loadBytecode(const char* filename) {
   File f = SD.open(filename, FILE_READ);
   if (!f) {
+    Serial.println("ERROR: no se pudo abrir el archivo");
     return false;
   }
+
   String line = f.readStringUntil('\n');
   line.trim();
   int n = line.toInt();
   if (n <= 0 || n > MAX_CODE) {
+    Serial.println("ERROR: tamaño de código inválido");
     f.close();
     return false;
   }
+
   code_size = n;
   for (int i = 0; i < n; i++) {
     String l = f.readStringUntil('\n');
     l.trim();
     if (l.length() == 0) {
+      Serial.println("ERROR: línea vacía en bytecode");
       f.close();
       return false;
     }
@@ -423,12 +474,14 @@ bool loadBytecode(const char* filename) {
     float d;
     const char* cstr = l.c_str();
     if (sscanf(cstr, "%d %d %f", &op, &a, &d) != 3) {
+      Serial.print("ERROR parseando línea ");
+      Serial.println(i);
       f.close();
       return false;
     }
     code[i].op = (OpCode)op;
-    code[i].a = a;
-    code[i].d = d;
+    code[i].a  = a;
+    code[i].d  = d;
   }
   f.close();
   entry_pc = 0;
@@ -445,7 +498,8 @@ void setup() {
   pinMode(sensorIzqPin, INPUT);
   pinMode(sensorDerPin, INPUT);
 
-  Serial.begin(9600);
+  Serial.begin(115200);
+  delay(500);
 
   if (!SD.begin(SD_CS_PIN)) {
     Serial.println("SD ERROR: no se pudo inicializar la tarjeta");
@@ -453,11 +507,13 @@ void setup() {
     return;
   }
 
+  Serial.println("SD OK, intentando cargar chamba.txt...");
+
   if (loadBytecode("chamba.txt")) {
     Serial.println("Bytecode cargado correctamente");
     programLoaded = true;
   } else {
-    Serial.println("ERROR: no se pudo cargar programa.chamba.bc");
+    Serial.println("ERROR: no se pudo cargar chamba.txt");
     programLoaded = false;
   }
 }
