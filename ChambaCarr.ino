@@ -21,11 +21,11 @@ const int sensorDerPin = 8;
 
 // SD en Arduino MEGA
 // SPI hardware: MISO=50, MOSI=51, SCK=52
-// CS lo ponemos en el pin 53 (SS del MEGA)
+// CS en el pin 53 (SS del MEGA)
 const bool LINEA_ALTA = true;
-const int SD_CS_PIN = 53;   // <--- ajusta este si tu módulo usa otro CS
+const int SD_CS_PIN = 53;
 
-// Puedes subir un poco estos valores, el MEGA tiene 8KB de RAM
+// Límites de la VM
 #define MAX_CODE 128
 #define MAX_VARS 64
 
@@ -88,6 +88,9 @@ int entry_pc = 0;
 
 bool programLoaded = false;
 bool executed = false;
+
+// === NUEVO: file global estilo ejemplo SD ===
+File myFile;
 
 static float to_bool(float v) {
   if (v != 0.0f) return 1.0f;
@@ -445,45 +448,66 @@ void run_vm() {
   }
 }
 
+// === AQUÍ CAMBIAMOS LA FORMA DE LEER ARCHIVOS, ESTILO EJEMPLO SD ===
 bool loadBytecode(const char* filename) {
-  File f = SD.open(filename, FILE_READ);
-  if (!f) {
-    Serial.println("ERROR: no se pudo abrir el archivo");
+  // Abrimos el archivo como en el ejemplo (usando myFile global)
+  myFile = SD.open(filename, FILE_READ);
+  if (!myFile) {
+    Serial.print("error opening ");
+    Serial.println(filename);
     return false;
   }
 
-  String line = f.readStringUntil('\n');
+  // Primera línea: número de instrucciones
+  String line = myFile.readStringUntil('\n');
   line.trim();
   int n = line.toInt();
+
+  Serial.print("Line count read: ");
+  Serial.println(n);
+
   if (n <= 0 || n > MAX_CODE) {
     Serial.println("ERROR: tamaño de código inválido");
-    f.close();
+    myFile.close();
     return false;
   }
 
   code_size = n;
+
   for (int i = 0; i < n; i++) {
-    String l = f.readStringUntil('\n');
-    l.trim();
-    if (l.length() == 0) {
-      Serial.println("ERROR: línea vacía en bytecode");
-      f.close();
+    if (!myFile.available()) {
+      Serial.println("ERROR: fin de archivo antes de leer todas las instrucciones");
+      myFile.close();
       return false;
     }
+
+    String l = myFile.readStringUntil('\n');
+    l.trim();
+    if (l.length() == 0) {
+      Serial.print("ERROR: línea vacía en bytecode en índice ");
+      Serial.println(i);
+      myFile.close();
+      return false;
+    }
+
     int op, a;
     float d;
     const char* cstr = l.c_str();
     if (sscanf(cstr, "%d %d %f", &op, &a, &d) != 3) {
       Serial.print("ERROR parseando línea ");
       Serial.println(i);
-      f.close();
+      Serial.print("Contenido: ");
+      Serial.println(l);
+      myFile.close();
       return false;
     }
+
     code[i].op = (OpCode)op;
     code[i].a  = a;
     code[i].d  = d;
   }
-  f.close();
+
+  myFile.close();
   entry_pc = 0;
   return true;
 }
@@ -498,16 +522,25 @@ void setup() {
   pinMode(sensorIzqPin, INPUT);
   pinMode(sensorDerPin, INPUT);
 
-  Serial.begin(115200);
-  delay(500);
-
-  if (!SD.begin(SD_CS_PIN)) {
-    Serial.println("SD ERROR: no se pudo inicializar la tarjeta");
-    programLoaded = false;
-    return;
+  Serial.begin(9600);
+  while (!Serial) {
+    ; // espera monitor serie, como en el ejemplo
   }
 
-  Serial.println("SD OK, intentando cargar chamba.txt...");
+  Serial.print("Initializing SD card...");
+
+  if (!SD.begin(SD_CS_PIN)) {
+    Serial.println("initialization failed. Things to check:");
+    Serial.println("1. is a card inserted?");
+    Serial.println("2. is your wiring correct?");
+    Serial.println("3. did you change the chipSelect pin to match your shield or module?");
+    Serial.println("Note: press reset button on the board and reopen this Serial Monitor after fixing your issue!");
+    // Igual que el ejemplo: se queda bloqueado
+    while (true);
+  }
+
+  Serial.println("initialization done.");
+  Serial.println("Intentando cargar chamba.txt...");
 
   if (loadBytecode("chamba.txt")) {
     Serial.println("Bytecode cargado correctamente");
