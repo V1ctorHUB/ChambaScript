@@ -3,19 +3,19 @@
 #include <SD.h>
 #include <math.h>
 
-const int IN1 = 13;
-const int IN2 = 12;
+const int IN1 = 7;
+const int IN2 = 4;
 const int ENA = 6;
-const int IN3 = 11;
-const int IN4 = 10;
+const int IN3 = 3;
+const int IN4 = 2;
 const int ENB = 5;
-const int sensorIzqPin = 8;
-const int sensorDerPin = 9;
+const int sensorIzqPin = 9;
+const int sensorDerPin = 8;
 const bool LINEA_ALTA = true;
-const int SD_CS_PIN = 4;
+const int SD_CS_PIN = 10;
 
-#define MAX_CODE 64
-#define MAX_VARS 32
+#define MAX_CODE 84
+#define MAX_VARS 40
 
 typedef enum {
   OP_PUSH_NUM,
@@ -255,7 +255,7 @@ void run_vm() {
     case OP_CALL_BUILTIN: {
       int id = in.a;
       int argc = (int)in.d;
-      float args[4]; // programas pequeños, pocos args
+      float args[4];
       int i;
       for (i = argc - 1; i >= 0; --i) {
         args[i] = stack[sp--];

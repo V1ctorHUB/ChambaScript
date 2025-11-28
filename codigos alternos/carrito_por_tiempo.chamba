@@ -1,0 +1,16 @@
+var speed           : int = 150;
+var ticksPerSecond  : int = 60;
+var seconds         : int = 3;
+var ticks           : int = 0;
+var targetTicks     : int = 0;
+
+targetTicks = seconds * ticksPerSecond;
+
+setForward(speed);
+
+while (ticks < targetTicks) {
+    accelerate(speed);
+    ticks = ticks + 1;
+};
+
+brake();
