@@ -453,7 +453,7 @@ void setup() {
     return;
   }
 
-  if (loadBytecode("chamba")) {
+  if (loadBytecode("chamba.txt")) {
     Serial.println("Bytecode cargado correctamente");
     programLoaded = true;
   } else {
