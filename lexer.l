@@ -54,6 +54,10 @@ ID      {LETTER}({LETTER}|{DIGIT})*
 "accelerateLeft"  { return ACCELERATELEFT; }
 "accelerateRight" { return ACCELERATERIGHT; }
 
+"ROTW"           { return ROTW; }
+"ROTC"           { return ROTC; }
+"delaySeconds"   { return DELAYSECONDS; }
+
 "=="        { return EQ; }
 "!="        { return NEQ; }
 "<="        { return LTE; }
@@ -103,4 +107,3 @@ ID      {LETTER}({LETTER}|{DIGIT})*
 .           { fprintf(stderr, "Caracter no reconocido: %s\n", yytext); }
 
 %%
-

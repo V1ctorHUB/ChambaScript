@@ -59,8 +59,11 @@ typedef enum {
     BI_TURNLEFT,
     BI_TURNRIGHT,
     BI_TURNANGLE,
-    BI_ACCELERATELEFT,   // NUEVO
-    BI_ACCELERATERIGHT   // NUEVO
+    BI_ACCELERATELEFT,
+    BI_ACCELERATERIGHT,
+    BI_ROTW,           // nuevo
+    BI_ROTC,           // nuevo
+    BI_DELAYSECONDS    // nuevo
 } BuiltinId;
 
 int emit(OpCode op, int a, double d);

@@ -122,6 +122,7 @@ static void semantic_error(const char* fmt, ...) {
 %token ACCELERATE SETFORWARD SETBACKWARD BRAKE
 %token TURNLEFT TURNRIGHT TURNANGLE
 %token ACCELERATELEFT ACCELERATERIGHT
+%token ROTW ROTC DELAYSECONDS
 
 %token VAR CONST FUNC RETURN IF ELSE WHILE DO FOR
 %token BREAK CONTINUE PASS
@@ -511,6 +512,9 @@ builtin_func:
     | TURNANGLE      { $$ = BI_TURNANGLE; }
     | ACCELERATELEFT { $$ = BI_ACCELERATELEFT; }
     | ACCELERATERIGHT{ $$ = BI_ACCELERATERIGHT; }
+    | ROTW           { $$ = BI_ROTW; }
+    | ROTC           { $$ = BI_ROTC; }
+    | DELAYSECONDS   { $$ = BI_DELAYSECONDS; }
     ;
 
 function_call:

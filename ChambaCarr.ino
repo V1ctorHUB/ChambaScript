@@ -34,7 +34,6 @@ typedef enum {
   OP_CALL, OP_RET
 } OpCode;
 
-// Solo agregamos estos DOS al final, no movemos nada de arriba
 typedef enum {
   BI_ABS,
   BI_MIN,
@@ -50,8 +49,11 @@ typedef enum {
   BI_TURNLEFT,
   BI_TURNRIGHT,
   BI_TURNANGLE,
-  BI_ACCELERATELEFT,   // nuevo
-  BI_ACCELERATERIGHT   // nuevo
+  BI_ACCELERATELEFT,
+  BI_ACCELERATERIGHT,
+  BI_ROTW,           // nuevo
+  BI_ROTC,           // nuevo
+  BI_DELAYSECONDS    // nuevo
 } BuiltinId;
 
 typedef struct {
@@ -322,6 +324,22 @@ void run_vm() {
             if (argc >= 1) {
               int s = (int)args[0];
               setPWM(currentPwmLeft, s);
+            }
+            break;
+
+          case BI_ROTW:
+            // de momento no hace nada
+            break;
+
+          case BI_ROTC:
+            // de momento no hace nada
+            break;
+
+          case BI_DELAYSECONDS:
+            if (argc >= 1) {
+              int secs = (int)args[0];
+              if (secs < 0) secs = 0;
+              delay((unsigned long)secs * 1000UL);
             }
             break;
 

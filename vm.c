@@ -231,21 +231,35 @@ void run_vm(void) {
                 }
                 res = 0.0;
                 break;
-
             case BI_ACCELERATELEFT:
                 if (argc >= 1) {
                     printf("accelerateLeft(%f)\n", args[0]);
                 }
                 res = 0.0;
                 break;
-
             case BI_ACCELERATERIGHT:
                 if (argc >= 1) {
                     printf("accelerateRight(%f)\n", args[0]);
                 }
                 res = 0.0;
                 break;
-
+            case BI_ROTW:
+                // Stub vacío
+                res = 0.0;
+                break;
+            case BI_ROTC:
+                // Stub vacío
+                res = 0.0;
+                break;
+            case BI_DELAYSECONDS:
+                if (argc >= 1) {
+                    double secs = args[0];
+                    if (secs < 0) secs = 0;
+                    printf("delaySeconds(%f)\n", secs);
+                    // Si quisieras, aquí podrías hacer sleep(secs);
+                }
+                res = 0.0;
+                break;
             default:
                 res = 0.0;
                 break;
