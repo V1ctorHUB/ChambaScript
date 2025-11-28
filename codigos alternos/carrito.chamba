@@ -15,7 +15,6 @@ var negroDer        : int   = 0;
 setForward(PWM_RIGHT_BASE);
 
 while (true) {
-
     negroIzq = checkLineLeft();
     negroDer = checkLineRight();
 

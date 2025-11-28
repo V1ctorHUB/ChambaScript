@@ -1,0 +1,33 @@
+var speed          : int;
+var ticksPerSecond : int;
+var ticks          : int;
+var targetTicks    : int;
+var times : int;
+ticks = 0;
+times = 0;
+speed = 200;
+ticksPerSecond = 500;
+targetTicks = 10000;
+
+setForward(speed);
+// Prueba no matar el otro motor
+while (ticks < targetTicks) {
+    if (ticks < ticksPerSecond*times) {
+        accelerateRight(speed/2);
+        accelerateLeft(speed);
+        times= times + 1;
+    } else {
+        accelerateLeft(speed/2);
+        accelerateRight(speed);
+    };
+    ticks = ticks + 1;
+};
+
+brake();
+
+setForward(speed);
+accelerateRight(0);
+
+while (true) {
+    accelerateLeft(speed);
+};

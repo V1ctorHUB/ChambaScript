@@ -1,0 +1,41 @@
+var c : int;
+var s : int;
+
+setForward(120);
+
+while (c < 4) {
+    if (checkLineLeft() == 1 && checkLineRight() == 1) {
+        if (s == 0) {
+            c = c + 1;
+        }else{pass;};
+        s = 1;
+    } else {
+        s = 0;
+    };
+};
+
+accelerateRight(0);
+delaySeconds(1);
+brake();
+
+c = 0;
+s = 0;
+
+setForward(120);
+
+while (c < 4) {
+    if (checkLineLeft() == 1 && checkLineRight() == 1) {
+        if (s == 0) {
+            c = c + 1;
+        }else{pass;};
+        s = 1;
+    } else {
+        s = 0;
+    };
+};
+
+accelerateRight(0);
+
+while (true) {
+    accelerateLeft(200);
+};

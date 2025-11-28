@@ -1,0 +1,32 @@
+var baseSpeed    : int = 120;
+
+var left         : int = 0;
+var right        : int = 0;
+var both         : bool = false;
+var lineCount    : int = 0;
+
+setForward(baseSpeed);
+
+while (lineCount  < 4 ) {
+    left  = checkLineLeft();
+    right = checkLineRight();
+
+    both = 0;
+    if (left == 1 && right == 1) {
+        both = true;
+    }else {
+        if(left == 0 && right == 0 && both == true){
+            lineCount = lineCount + 1;
+            both = false;
+        }else{
+            pass;
+        };
+    };
+    
+    if(lineCount >= 2){
+        setForward(200);
+    }else{
+        pass;
+    };
+};
+brake();

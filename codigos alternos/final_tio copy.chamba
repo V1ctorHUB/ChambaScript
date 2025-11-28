@@ -1,0 +1,32 @@
+var speed          : int;
+var ticksPerSecond : int;
+var ticks          : int;
+var targetTicks    : int;
+var phase          : int;
+
+speed = 120;
+ticksPerSecond = 250;
+targetTicks = 20000;
+
+setForward(speed);
+
+while (ticks < targetTicks) {
+    phase = ticks / ticksPerSecond;
+    if (phase % 2 == 0) {
+        accelerateRight(70);
+        accelerateLeft(speed);
+    } else {
+        accelerateLeft(70);
+        accelerateRight(speed);
+    };
+    ticks = ticks + 1;
+};
+
+brake();
+
+setForward(speed);
+accelerateRight(0);
+
+while (true) {
+    accelerateLeft(speed);
+};

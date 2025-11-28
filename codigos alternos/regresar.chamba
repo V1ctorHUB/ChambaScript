@@ -1,0 +1,26 @@
+var v  : int = 200;
+var t  : int = 2;
+var tg : int = 1;
+
+setForward(v);
+delaySeconds(t);
+
+turnAngle(1);
+delaySeconds(tg);
+
+setForward(v);
+delaySeconds(t);
+
+turnAngle(1);
+delaySeconds(tg);
+
+setForward(v);
+delaySeconds(t);
+
+turnAngle(1);
+delaySeconds(tg);
+
+setForward(v);
+delaySeconds(t);
+
+brake();

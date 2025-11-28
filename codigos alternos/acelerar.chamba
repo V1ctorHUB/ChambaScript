@@ -1,7 +1,8 @@
-var speed : int = 200;
 
-setForward(speed);
+
+setForward(400);
 
 while (true) {
-    accelerate(speed);
+    accelerateLeft(130);
+    accelerateRight(250);
 };

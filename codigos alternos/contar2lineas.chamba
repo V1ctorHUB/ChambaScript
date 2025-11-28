@@ -1,0 +1,42 @@
+var baseSpeed  : int = 150;
+var offset     : int = 40;
+
+var left       : int;
+var right      : int;
+var both       : int;
+var prevBoth   : int;
+var lineCount  : int;
+
+setForward(baseSpeed);
+
+while (true) {
+    left  = checkLineLeft();
+    right = checkLineRight();
+
+    both = 0;
+    if (left == 1 && right == 1) {
+        both = 1;
+    } else {
+        pass;
+    };
+
+    if (both == 1 && prevBoth == 0) {
+        lineCount = lineCount + 1;
+    } else {
+        pass;
+    };
+
+    prevBoth = both;
+
+    if (lineCount < 2) {
+        accelerate(baseSpeed);
+        accelerateLeft(baseSpeed - offset);
+    } else {
+        if (lineCount < 4) {
+            accelerateRight(baseSpeed*1.80 + 80);
+            accelerateLeft(baseSpeed*1.80 + 50 - offset);
+        } else {
+            brake();
+        };
+    };
+};

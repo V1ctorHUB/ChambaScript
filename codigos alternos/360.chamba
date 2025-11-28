@@ -1,0 +1,10 @@
+
+
+var speed : int = 200;
+
+setForward(speed);
+accelerateRight(0);
+while(true){
+    
+    accelerateLeft(speed);
+    };
