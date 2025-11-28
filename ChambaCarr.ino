@@ -92,11 +92,30 @@ void adelante() {
   digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
   digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
 }
+
+
 void atras() {
   digitalWrite(IN1, HIGH); digitalWrite(IN2, LOW);
   digitalWrite(IN3, HIGH); digitalWrite(IN4, LOW);
 }
 void setPWM(int pwmIzq, int pwmDer) {
+  currentPwmLeft  = clampPWM(pwmIzq);
+  currentPwmRight = clampPWM(pwmDer);
+  analogWrite(ENA, currentPwmLeft*0.85f);
+  analogWrite(ENB, currentPwmRight);
+}
+void rotarW(){
+  digitalWrite(IN1, HIGH);  digitalWrite(IN2, LOW);
+  digitalWrite(IN3, LOW);  digitalWrite(IN4, HIGH);
+  currentPwmLeft  = clampPWM(pwmIzq);
+  currentPwmRight = clampPWM(pwmDer);
+  analogWrite(ENA, currentPwmLeft*0.85f);
+  analogWrite(ENB, currentPwmRight);
+}
+
+void rotarC(){
+  digitalWrite(IN1, LOW);  digitalWrite(IN2, HIGH);
+  digitalWrite(IN3, HIGH);  digitalWrite(IN4, LOW);
   currentPwmLeft  = clampPWM(pwmIzq);
   currentPwmRight = clampPWM(pwmDer);
   analogWrite(ENA, currentPwmLeft*0.85f);
