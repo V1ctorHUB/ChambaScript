@@ -1,0 +1,7 @@
+var speed : int = 200;
+
+setForward(speed);
+
+while (true) {
+    accelerate(speed);
+};
