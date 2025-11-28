@@ -3,6 +3,9 @@
 #include <SD.h>
 #include <math.h>
 
+// ===== DEBUG =====
+#define DEBUG 1
+
 // Motores
 const int IN1 = 7;
 const int IN2 = 4;
@@ -84,7 +87,7 @@ int entry_pc = 0;
 bool programLoaded = false;
 bool executed = false;
 
-// archivo global para la SD
+// archivo global SD
 File myFile;
 
 static float to_bool(float v) {
@@ -129,6 +132,10 @@ void setPWM(int pwmIzq, int pwmDer) {
 }
 
 void run_vm() {
+  if (DEBUG) {
+    Serial.println("== INICIANDO VM ==");
+  }
+
   float stack[32];
   int sp = -1;
   int pc = entry_pc;
@@ -137,6 +144,18 @@ void run_vm() {
 
   for (;;) {
     Instr in = code[pc];
+
+    if (DEBUG) {
+      Serial.print("PC=");
+      Serial.print(pc);
+      Serial.print(" OP=");
+      Serial.print((int)in.op);
+      Serial.print(" A=");
+      Serial.print(in.a);
+      Serial.print(" D=");
+      Serial.println(in.d);
+    }
+
     switch (in.op) {
     case OP_PUSH_NUM:
       sp++;
@@ -425,18 +444,33 @@ void run_vm() {
       break;
 
     case OP_HALT:
+      if (DEBUG) {
+        Serial.println("OP_HALT alcanzado, fin de VM.");
+      }
       return;
 
     default:
+      if (DEBUG) {
+        Serial.print("OPCODE desconocido: ");
+        Serial.println((int)in.op);
+      }
       return;
     }
   }
 }
 
-// PARSER NUEVO: sin sscanf, usando String
+// === PARSER: lee archivo TEST sin sscanf ===
 bool loadBytecode(const char* filename) {
+  if (DEBUG) {
+    Serial.print("Abriendo archivo: ");
+    Serial.println(filename);
+  }
+
   myFile = SD.open(filename, FILE_READ);
   if (!myFile) {
+    if (DEBUG) {
+      Serial.println("ERROR: no se pudo abrir el archivo");
+    }
     return false;
   }
 
@@ -444,7 +478,15 @@ bool loadBytecode(const char* filename) {
   line.trim();
   int n = line.toInt();
 
+  if (DEBUG) {
+    Serial.print("Line count read: ");
+    Serial.println(n);
+  }
+
   if (n <= 0 || n > MAX_CODE) {
+    if (DEBUG) {
+      Serial.println("ERROR: tamaño de código inválido");
+    }
     myFile.close();
     return false;
   }
@@ -453,6 +495,10 @@ bool loadBytecode(const char* filename) {
 
   for (int i = 0; i < n; i++) {
     if (!myFile.available()) {
+      if (DEBUG) {
+        Serial.print("ERROR: fin de archivo antes de tiempo en i=");
+        Serial.println(i);
+      }
       myFile.close();
       return false;
     }
@@ -460,18 +506,25 @@ bool loadBytecode(const char* filename) {
     String l = myFile.readStringUntil('\n');
     l.trim();
     if (l.length() == 0) {
+      if (DEBUG) {
+        Serial.print("ERROR: línea vacía en i=");
+        Serial.println(i);
+      }
       myFile.close();
       return false;
     }
-
-    int opInt = 0;
-    int aInt  = 0;
-    float dVal = 0.0f;
 
     int firstSpace  = l.indexOf(' ');
     int secondSpace = l.indexOf(' ', firstSpace + 1);
 
     if (firstSpace <= 0 || secondSpace <= firstSpace) {
+      if (DEBUG) {
+        Serial.print("ERROR formato en línea ");
+        Serial.print(i);
+        Serial.print(" => '");
+        Serial.print(l);
+        Serial.println("'");
+      }
       myFile.close();
       return false;
     }
@@ -480,17 +533,33 @@ bool loadBytecode(const char* filename) {
     String sA  = l.substring(firstSpace + 1, secondSpace);
     String sD  = l.substring(secondSpace + 1);
 
-    opInt = sOp.toInt();
-    aInt  = sA.toInt();
-    dVal  = sD.toFloat();
+    int   opInt = sOp.toInt();
+    int   aInt  = sA.toInt();
+    float dVal  = sD.toFloat();
 
     code[i].op = (OpCode)opInt;
     code[i].a  = aInt;
     code[i].d  = dVal;
+
+    if (DEBUG) {
+      Serial.print("Instr[");
+      Serial.print(i);
+      Serial.print("] = ");
+      Serial.print(opInt);
+      Serial.print(" ");
+      Serial.print(aInt);
+      Serial.print(" ");
+      Serial.println(dVal);
+    }
   }
 
   myFile.close();
   entry_pc = 0;
+
+  if (DEBUG) {
+    Serial.println("Bytecode cargado OK.");
+  }
+
   return true;
 }
 
@@ -505,17 +574,34 @@ void setup() {
   pinMode(sensorDerPin, INPUT);
 
   Serial.begin(9600);
-  while (!Serial) {;}
+  delay(500);
 
-  if (!SD.begin(SD_CS_PIN)) {
-    programLoaded = false;
-    while (true) {;}
+  if (DEBUG) {
+    Serial.println("Inicializando SD...");
   }
 
-  // ahora el archivo se llama "TEST"
+  if (!SD.begin(SD_CS_PIN)) {
+    if (DEBUG) {
+      Serial.println("SD ERROR: no se pudo inicializar la tarjeta");
+    }
+    programLoaded = false;
+    return;
+  }
+
+  if (DEBUG) {
+    Serial.println("SD inicializada correctamente.");
+    Serial.println("Intentando cargar TEST...");
+  }
+
   if (loadBytecode("TEST")) {
+    if (DEBUG) {
+      Serial.println("Programa cargado correctamente.");
+    }
     programLoaded = true;
   } else {
+    if (DEBUG) {
+      Serial.println("ERROR: no se pudo cargar TEST");
+    }
     programLoaded = false;
   }
 }
